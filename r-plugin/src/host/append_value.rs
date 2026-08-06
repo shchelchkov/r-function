@@ -1,0 +1,46 @@
+use crate::host::{ctx_setting_code_key, ctx_u64, ctx_value};
+use crate::plugin::PluginContext;
+use std::ffi::c_void;
+use std::sync::Arc;
+
+pub unsafe extern "C" fn host_append_value(
+    ctx: *mut c_void,
+
+    setting_code_ptr: *const u8,
+    setting_code_len: usize,
+
+    key_ptr: *const u8,
+    key_len: usize,
+
+    timestamp_ptr: *const u8,
+    timestamp_len: usize,
+
+    value_ptr: *const u8,
+    value_len: usize,
+) {
+    let Some(ctx) = (unsafe { (ctx as *const PluginContext).as_ref() }) else {
+        return;
+    };
+
+    let Some((setting_code, key)) =
+        (unsafe { ctx_setting_code_key(setting_code_ptr, setting_code_len, key_ptr, key_len) })
+    else {
+        return;
+    };
+
+    let Some(timestamp) = (unsafe { ctx_u64(timestamp_ptr, timestamp_len) }) else {
+        tracing::error!(%setting_code, "plugin append_value: timestamp is not 8 LE bytes");
+        return;
+    };
+
+    let Some(value) = (unsafe { ctx_value(value_ptr, value_len) }) else {
+        return;
+    };
+
+    if let Err(error) = ctx
+        .db
+        .append_value(&setting_code, Arc::from(key), timestamp, value)
+    {
+        tracing::error!(%error, %setting_code, "plugin append_value failed");
+    }
+}

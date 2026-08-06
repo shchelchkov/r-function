@@ -1,0 +1,21 @@
+[package]
+name = "r-producer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+r-config = { version = "0.1.0", path = "../r-config" }
+r-error = { version = "0.1.0", path = "../r-error" }
+r-setting = { version = "0.1.0", path = "../r-setting" }
+r-feed = { version = "0.1.0", path = "../r-feed" }
+sonic-rs = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+rdkafka = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+rdkafka = { workspace = true, features = ["dynamic-linking"] }

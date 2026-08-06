@@ -1,0 +1,20 @@
+{
+  "date_time": "2026-08-26T07:41:11.126949256Z",
+  "timestamp": 1787730070997,
+  "zRate": "1.3997120026510446",
+  "topic": "orderbook.50.TAOUSDT",
+  "best_ask": 234.19,
+  "tickRate": "22.329548296888365",
+  "symbol": "TAOUSDT",
+  "best_bid": 0,
+  "regime_state": 1,
+  "z9": "-0.980346663021215",
+  "totalDepth": 27.055,
+  "regime": "stabilize",
+  "regime_onset": 1,
+  "fragilityObi": "0.036961744592978685",
+  "time": "41:11:126",
+  "zFrag": "-2.858026719594579",
+  "imbalance": -1,
+  "setting_code": "message_test"
+}

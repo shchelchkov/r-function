@@ -1,0 +1,18 @@
+[package]
+name = "r-plugin-api"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["rlib"]
+#crate-type = ["cdylib"]
+
+
+[dependencies]
+r-error = { version = "0.1.0", path = "../r-error" }
+async-trait = "0.1.83"
+sonic-rs = { workspace = true }
+log = "0.4.29"
+
+
+
