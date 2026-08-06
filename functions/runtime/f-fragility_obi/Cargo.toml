@@ -1,0 +1,13 @@
+[package]
+name = "f_fragility_obi"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sonic-rs = "0.5"
+run-common = { path = "../run-common" }
+f-common = { path = "../../fun/f-common" }
+
+[[bin]]
+name = "f-fragility_obi"
+path = "src/main.rs"
