@@ -1,0 +1,116 @@
+use std::error::Error;
+use std::time::Duration;
+
+use r_config::config::AppConfig;
+use r_consumer::functions::git::spawn_git_refresher;
+
+use r_watchdog::Watchdog;
+
+use crate::bootstrap::{self, Components};
+use crate::http;
+use crate::persist;
+use crate::pipeline::Pipeline;
+use crate::shutdown::Shutdown;
+
+pub async fn run(cfg: AppConfig) -> Result<(), Box<dyn Error>> {
+    let shutdown = Shutdown::install();
+
+    let Components {
+        consumer,
+        git,
+        processor,
+        runtime,
+        plugin_module,
+        observers,
+        function,
+        function_value,
+        catalog,
+        consumer_setting,
+        stream,
+        values,
+        db,
+        polygon,
+        feed,
+    } = bootstrap::build(&cfg).await?;
+
+    let refresher = spawn_git_refresher(
+        git.clone(),
+        Duration::from_secs(cfg.function_config.git_fetch_interval_secs),
+        observers,
+        shutdown.subscribe(),
+    );
+
+    let watchdog_tasks: Vec<_> = cfg
+        .watchdog
+        .iter()
+        .map(|wd| Watchdog::new(wd.clone(), runtime.clone()).spawn(shutdown.subscribe()))
+        .collect();
+
+    let pipeline = Pipeline::spawn(&cfg.pipeline, processor);
+    let state = cfg.values.persist_state.then(|| values.clone());
+
+    let db_flusher = persist::spawn_flusher(
+        db.clone(),
+        Duration::from_millis(cfg.values.fsync_ms.max(1)),
+        shutdown.subscribe(),
+    );
+    let snapshotter = match &state {
+        Some(values) if cfg.values.snapshot_secs > 0 => Some(persist::spawn_snapshotter(
+            values.clone(),
+            db.clone(),
+            Duration::from_secs(cfg.values.snapshot_secs),
+            shutdown.subscribe(),
+        )),
+        _ => None,
+    };
+
+    let consumer_task = tokio::spawn({
+        let ingress = pipeline.ingress();
+        let max_inflight = cfg.pipeline.ingress_queue;
+        let mut sd = shutdown.subscribe();
+        async move {
+            consumer
+                .run(ingress, max_inflight, async move {
+                    let _ = sd.changed().await;
+                })
+                .await
+        }
+    });
+
+    http::serve(
+        &cfg.tokio,
+        git,
+        function,
+        function_value,
+        catalog,
+        consumer_setting,
+        stream,
+        values,
+        db.clone(),
+        polygon,
+        feed,
+        plugin_module,
+        runtime,
+        shutdown.subscribe(),
+    )
+    .await?;
+
+    if let Err(e) = consumer_task.await? {
+        tracing::error!(error = %e, "consumer task failed");
+    }
+    pipeline.drain().await;
+    let _ = db_flusher.await;
+    if let Some(task) = snapshotter {
+        let _ = task.await;
+    }
+    if let Some(values) = &state {
+        persist::snapshot_values(values, &db).await;
+    }
+    persist::persist_all(&db).await;
+    let _ = refresher.await;
+    for task in watchdog_tasks {
+        let _ = task.await;
+    }
+
+    Ok(())
+}

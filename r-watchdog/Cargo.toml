@@ -1,0 +1,13 @@
+[package]
+name = "r-watchdog"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+r-config = { version = "0.1.0", path = "../r-config" }
+r-runtime-api = { version = "0.1.0", path = "../r-runtime-api" }
+
+serde = { workspace = true }
+sonic-rs = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
+tracing = { workspace = true }

@@ -1,0 +1,9 @@
+[package]
+name = "r-runtime-api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+r-error = { version = "0.1.0", path = "../r-error" }
+async-trait = "0.1.83"
+sonic-rs = { workspace = true }

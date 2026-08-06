@@ -1,0 +1,7 @@
+**/target
+**/Cargo.lock
+.idea
+.continue
+.DS_store
+.env
+.zed

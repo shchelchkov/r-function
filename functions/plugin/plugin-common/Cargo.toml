@@ -1,0 +1,17 @@
+[package]
+name = "plugin-common"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "plugin_common"
+path = "src/lib.rs"
+
+[dependencies]
+sonic-rs = "0.5"
+r-plugin-api = { path = "../../../r-plugin-api" }
+r-error = { path = "../../../r-error" }
+f-common = { path = "../../fun/f-common" }
+log = "0.4.34"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

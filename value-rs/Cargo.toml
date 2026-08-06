@@ -1,0 +1,9 @@
+[package]
+name = "value-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { workspace = true }
+sonic-rs = { workspace = true }
+thiserror = { workspace = true }

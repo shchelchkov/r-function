@@ -1,0 +1,14 @@
+[package]
+name = "r-error"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+rdkafka = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+rdkafka = { workspace = true, features = ["dynamic-linking"] }
