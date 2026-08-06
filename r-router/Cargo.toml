@@ -1,0 +1,25 @@
+[package]
+name = "r-router"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+r-config = { version = "0.1.0", path = "../r-config" }
+r-setting = { version = "0.1.0", path = "../r-setting" }
+r-error = { version = "0.1.0", path = "../r-error" }
+r-value = { version = "0.1.0", path = "../r-value" }
+r-feed = { version = "0.1.0", path = "../r-feed" }
+
+anyhow = { workspace = true }
+axum = { version = "0.8.8", features = ["ws"] }
+bytes = { workspace = true }
+futures = { workspace = true }
+rdkafka = { workspace = true }
+serde = { workspace = true }
+sonic-rs = { workspace = true }
+tokio = { workspace = true, features = ["rt", "sync", "time", "macros"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "time", "sync"] }
+tokio-tungstenite = "0.29"

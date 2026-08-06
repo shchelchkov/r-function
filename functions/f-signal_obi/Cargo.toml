@@ -1,0 +1,12 @@
+[package]
+name = "f_signal_obi"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sonic-rs = "0.5"
+f-common = { path = "../f-common" }
+
+[[bin]]
+name = "f-signal_obi"
+path = "src/main.rs"

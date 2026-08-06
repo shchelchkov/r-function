@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = [
+    "f-common",
+    "f-target_key",
+    "f-imbalance_ema",
+    "f-fragility_obi",
+    "f-imbalance",
+    "f-trades_bybit",
+    "f-trades_bybit_processor",
+    "f-order_book_bybit",
+    "f-order_book_mexc",
+    "f-order_book_processor",
+    "f-processor_mexc",
+    "f-signal_obi",
+    "f-message",
+    "f-message_json",
+    "f-message_shift",
+    "f-watchdog",
+    "f-regime_shift",
+    "f-directory_value",
+    "f-symbol_value",
+    "f-symbol_set",
+]
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"

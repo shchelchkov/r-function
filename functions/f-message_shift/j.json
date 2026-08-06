@@ -1,0 +1,19 @@
+{
+  "code": "188254758-1780908733269",
+  "setting_code": "message_telegram",
+  "user_id": 188254758,
+  "user_name": "vit_shchelchkov",
+  "first_name": "Vit",
+  "telegram": "vit_shchelchkov",
+  "command": "message",
+  "text": "user_resource_list",
+  "caption": null,
+  "json": null,
+  "parent_code": "188254758",
+  "date_time": "2026-06-08 08:52:13.269486",
+  "message_date": "1780908733",
+  "message_id": "184",
+  "chat_id": "188254758",
+  "text_to_send": null,
+  "is_active": true
+}

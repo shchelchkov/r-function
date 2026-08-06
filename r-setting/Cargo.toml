@@ -1,0 +1,19 @@
+[package]
+name = "r-setting"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+r-config = { version = "0.1.0", path = "../r-config" }
+r-error = { version = "0.1.0", path = "../r-error" }
+anyhow = { workspace = true }
+bytes = { workspace = true }
+moka = { workspace = true, features = ["future"] }
+reqwest = { workspace = true, features = ["json", "rustls"] }
+serde = { workspace = true }
+gix = { workspace = true }
+tokio = { workspace = true, features = ["rt", "sync", "macros", "time"] }
+tracing = { workspace = true }
+sonic-rs = { workspace = true }
+dashmap = { workspace = true }
+arc-swap = { workspace = true }

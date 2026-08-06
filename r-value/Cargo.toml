@@ -1,0 +1,9 @@
+[package]
+name = "r-value"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dashmap = { workspace = true }
+sonic-rs = { workspace = true }
+tracing = { workspace = true }

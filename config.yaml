@@ -1,0 +1,49 @@
+tokio:
+  port: 8203
+  worker_threads: 4
+
+pipeline:
+  concurrency: 4
+  per_worker_queue: 25600
+  ingress_queue: 102400
+kafka_consumer:
+  bootstrap_servers: "ts-redpanda:9093"
+  client_id: "r-function-orderbook"
+  group_id: "r-function-orderbook.local"
+  topics:
+    - function-orderbook.local
+  parameter:
+    max.poll.interval.ms: "600000"
+    session.timeout.ms: "60000"
+kafka_producer:
+  bootstrap_servers: "ts-redpanda:9093"
+  client_id: "r-function-orderbook"
+  group_id: "r-function-orderbook.local"
+  topics:
+    - function-processor.local
+  dlq_topic: function-dlq.local
+
+  parameter:
+    enable.idempotence: "true"
+    compression.type: "lz4"
+    linger.ms: "5"
+    queue.buffering.max.messages: "200000"
+    message.timeout.ms: "120000"
+
+function_config:
+  git_repo_url: ssh://git@gitea:2222/tst/r-json.git
+  git_workdir: /tmp/json-orderbook-gix
+  git_catalog_setting: json/orderbook/catalog_setting
+  git_function_settings: json/orderbook/function_settings
+  git_function_value: json/orderbook/function_values
+  git_stream_setting: json/orderbook/stream_setting
+  git_consumer_setting: json/orderbook/consumer_setting
+  git_wasm_path: wasm/function_settings
+  git_revision: origin/main
+  git_fetch_interval_secs: 5
+
+watchdog:
+  module_name: f-watchdog.wasm
+  setting_code: obi_state
+  key: bybit_orderbook0
+  interval_secs: 30

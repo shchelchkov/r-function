@@ -1,0 +1,14 @@
+[package]
+name = "r-producer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+r-config = { version = "0.1.0", path = "../r-config" }
+r-error = { version = "0.1.0", path = "../r-error" }
+r-setting = { version = "0.1.0", path = "../r-setting" }
+r-feed = { version = "0.1.0", path = "../r-feed" }
+rdkafka = { workspace = true }
+sonic-rs = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }

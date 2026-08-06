@@ -1,0 +1,63 @@
+[package]
+name = "r-function"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+members = [
+    "r-config",
+    "r-error",
+    "r-consumer",
+    "r-process",
+    "r-producer",
+    "r-router",
+    "r-feed",
+    "r-setting",
+    "r-value",
+    "r-runtime-api",
+    "r-runtime",
+    "r-watchdog",
+]
+exclude = ["functions"]
+
+[workspace.dependencies]
+tokio = { version = "1.52", default-features = false }
+serde = { version = "1", features = ["derive"] }
+sonic-rs = "0.5"
+reqwest = { version = "0.13", default-features = false }
+tracing = "0.1"
+anyhow = "1"
+thiserror = "2"
+rdkafka = "0.39"
+dashmap = "6.1"
+arc-swap = "1"
+moka = "0.12"
+gix = { version = "0.83", features = ["blocking-network-client"] }
+futures = "0.3"
+bytes = "1"
+
+[dependencies]
+r-config = { version = "0.1.0", path = "./r-config" }
+r-consumer = { version = "0.1.0", path = "./r-consumer" }
+r-runtime = { version = "0.1.0", path = "./r-runtime" }
+r-router = { version = "0.1.0", path = "./r-router" }
+r-feed = { version = "0.1.0", path = "./r-feed" }
+r-value = { version = "0.1.0", path = "./r-value" }
+r-watchdog = { version = "0.1.0", path = "./r-watchdog" }
+tokio = { workspace = true, features = ["rt-multi-thread", "net", "signal", "time", "sync"] }
+axum = "0.8.8"
+futures = { workspace = true }
+tower = "0.5.3"
+
+rdkafka = { workspace = true }
+indexmap = "2.14.0"
+rayon = "1.11.0"
+
+wasmtime = "44.0.1"
+
+serde = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+sonic-rs = { workspace = true }

@@ -1,0 +1,18 @@
+[package]
+name = "r-process"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+r-config = { version = "0.1.0", path = "../r-config" }
+r-setting = { version = "0.1.0", path = "../r-setting" }
+r-producer = { version = "0.1.0", path = "../r-producer" }
+r-error = { version = "0.1.0", path = "../r-error" }
+r-value = { version = "0.1.0", path = "../r-value" }
+r-runtime-api = { version = "0.1.0", path = "../r-runtime-api" }
+
+rdkafka = { workspace = true }
+tracing = { workspace = true }
+sonic-rs = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
+async-trait = "0.1.83"

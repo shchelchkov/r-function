@@ -1,0 +1,11 @@
+[package]
+name = "f-common"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "f_common"
+path = "src/lib.rs"
+
+[dependencies]
+sonic-rs = "0.5"

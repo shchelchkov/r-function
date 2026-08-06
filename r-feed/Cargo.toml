@@ -1,0 +1,14 @@
+[package]
+name = "r-feed"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { workspace = true, features = ["sync"] }
+bytes = { workspace = true }
+dashmap = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+# Для #[tokio::test] в юнит-тестах hub'а.
+tokio = { workspace = true, features = ["sync", "rt", "macros"] }

@@ -1,0 +1,18 @@
+[package]
+name = "r-consumer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+r-config = { version = "0.1.0", path = "../r-config" }
+r-setting = { version = "0.1.0", path = "../r-setting" }
+r-process = { version = "0.1.0", path = "../r-process" }
+r-error = { version = "0.1.0", path = "../r-error" }
+
+anyhow = { workspace = true }
+axum = "0.8.8"
+futures = { workspace = true }
+rdkafka = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true, features = ["sync", "macros"] }
+tracing = { workspace = true }
