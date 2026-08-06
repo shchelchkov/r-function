@@ -1,0 +1,12 @@
+[package]
+name = "run-common"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "run_common"
+path = "src/lib.rs"
+
+[dependencies]
+sonic-rs = "0.5"
+f-common = { path = "../../fun/f-common" }

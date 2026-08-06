@@ -1,0 +1,12 @@
+[package]
+name = "r-tree"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dashmap = { workspace = true }
+sonic-rs = { workspace = true }
+tracing = { workspace = true }
+rstar = "0.13.0"
+geo = "0.33.1"
+arc-swap = "1"

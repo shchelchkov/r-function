@@ -1,0 +1,299 @@
+#[cfg(test)]
+mod tests {
+    use async_trait::async_trait;
+    use r_error::plugin::error::PluginError;
+    use r_error::runtime::error::RuntimeError;
+    use r_plugin_api::Plugin;
+    use r_process::process::{
+        Message, MessagePublisher, Processor, ResolveError, Resolver, SettingProvider,
+    };
+    use r_producer::kafka::producer::{DlqContext, KafkaSendError};
+    use r_runtime_api::Runtime;
+    use r_setting::functions::function_setting::FunctionSetting;
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Default)]
+    struct MockPublisher {
+        sent: Mutex<Vec<(String, Option<Vec<u8>>)>>,
+        dlq: Mutex<Vec<String>>,
+    }
+
+    #[async_trait]
+    impl MessagePublisher for MockPublisher {
+        async fn send_objects(
+            &self,
+            setting_code: &str,
+            key: Option<&[u8]>,
+            _objects: &[sonic_rs::Value],
+        ) -> Result<(), KafkaSendError> {
+            self.sent
+                .lock()
+                .unwrap()
+                .push((setting_code.to_string(), key.map(<[u8]>::to_vec)));
+            Ok(())
+        }
+
+        async fn send_dlq(
+            &self,
+            _payload: &[u8],
+            _key: Option<&[u8]>,
+            ctx: DlqContext<'_>,
+        ) -> Result<(), KafkaSendError> {
+            self.dlq.lock().unwrap().push(ctx.reason.to_string());
+            Ok(())
+        }
+    }
+
+    struct MockProvider {
+        settings: Arc<Vec<FunctionSetting>>,
+        value_key: Arc<Vec<String>>,
+    }
+
+    impl SettingProvider for MockProvider {
+        fn get_cached_setting(&self, _sc: &str) -> Option<Arc<Vec<FunctionSetting>>> {
+            Some(self.settings.clone())
+        }
+        fn get_function_setting(&self, _sc: &str) -> Option<Arc<Vec<FunctionSetting>>> {
+            Some(self.settings.clone())
+        }
+        fn get_value_key(&self, _sc: &str) -> Option<Arc<Vec<String>>> {
+            Some(self.value_key.clone())
+        }
+    }
+
+    struct MockRuntime {
+        out: Vec<u8>,
+    }
+
+    #[async_trait]
+    impl Runtime for MockRuntime {
+        async fn run_runtime(
+            &self,
+            _module: &str,
+            _payload: Vec<u8>,
+        ) -> Result<Vec<u8>, RuntimeError> {
+            Ok(self.out.clone())
+        }
+    }
+
+    struct MockPlugin {
+        out: Vec<u8>,
+    }
+
+    #[async_trait]
+    impl Plugin for MockPlugin {
+        async fn run_plugin(
+            &self,
+            _module: &str,
+            _payload: Vec<u8>,
+        ) -> Result<Vec<u8>, PluginError> {
+            Ok(self.out.clone())
+        }
+    }
+    fn fs(json: &str) -> FunctionSetting {
+        sonic_rs::from_slice(json.as_bytes()).expect("valid function setting")
+    }
+
+    fn block_on<F: std::future::Future>(fut: F) -> F::Output {
+        tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap()
+            .block_on(fut)
+    }
+
+    #[test]
+    fn handle_batch_publishes_group_result() {
+        let publisher = Arc::new(MockPublisher::default());
+        let provider = Arc::new(MockProvider {
+            settings: Arc::new(vec![fs(
+                r#"{"isActive":true,"isKey":true,"key":"topic","module":["m1"]}"#,
+            )]),
+            value_key: Arc::new(vec!["topic".to_string()]),
+        });
+        let runtime: Arc<dyn Runtime> = Arc::new(MockRuntime {
+            out: br#"[{"r":1}]"#.to_vec(),
+        });
+
+        let plugin: Arc<dyn Plugin> = Arc::new(MockPlugin {
+            out: br#"[{"r":1}]"#.to_vec(),
+        });
+
+        let resolver = Arc::new(Resolver::new(provider));
+        let processor = Processor::new(publisher.clone(), resolver.clone(), runtime, plugin);
+
+        let payload = block_on(resolver.resolve_value(br#"{"setting_code":"sc","topic":"t1"}"#))
+            .expect("valid JSON")
+            .map(|v| vec![v]);
+        let msg = Message::new(
+            "src".into(),
+            0,
+            7,
+            Some(b"t1".to_vec()),
+            payload,
+            HashMap::new(),
+            None,
+        );
+
+        let results = block_on(processor.handle_batch(vec![msg]));
+
+        assert_eq!(results, vec![Ok(())], "успешная группа -> коммит офсета");
+        let sent = publisher.sent.lock().unwrap();
+        assert_eq!(sent.len(), 1, "одна группа -> одна публикация");
+        assert_eq!(sent[0].0, "sc", "опубликовано под своим setting_code");
+        assert_eq!(
+            sent[0].1.as_deref(),
+            Some(&b"t1"[..]),
+            "out_key из сообщения"
+        );
+        assert!(
+            publisher.dlq.lock().unwrap().is_empty(),
+            "без poison :: без DLQ"
+        );
+    }
+
+    #[test]
+    fn handle_batch_does_not_parse_last_module_output() {
+        let publisher = Arc::new(MockPublisher::default());
+        let provider = Arc::new(MockProvider {
+            settings: Arc::new(vec![fs(
+                r#"{"isActive":true,"isKey":true,"key":"topic","module":["m1"]}"#,
+            )]),
+            value_key: Arc::new(vec!["topic".to_string()]),
+        });
+        let runtime: Arc<dyn Runtime> = Arc::new(MockRuntime {
+            out: b"not json".to_vec(),
+        });
+        let plugin: Arc<dyn Plugin> = Arc::new(MockPlugin { out: vec![] });
+        let resolver = Arc::new(Resolver::new(provider));
+        let processor = Processor::new(publisher.clone(), resolver.clone(), runtime, plugin);
+
+        let payload = block_on(resolver.resolve_value(br#"{"setting_code":"sc","topic":"t1"}"#))
+            .expect("valid JSON")
+            .map(|v| vec![v]);
+        let msg = Message::new("src".into(), 0, 7, None, payload, HashMap::new(), None);
+
+        let results = block_on(processor.handle_batch(vec![msg]));
+
+        assert_eq!(
+            results,
+            vec![Ok(())],
+            "выход последнего модуля не разбирается"
+        );
+        assert!(
+            publisher.dlq.lock().unwrap().is_empty(),
+            "не poison -> без DLQ"
+        );
+        assert_eq!(
+            publisher.sent.lock().unwrap().len(),
+            1,
+            "группа опубликована"
+        );
+    }
+
+    fn topic_resolver() -> Resolver {
+        Resolver::new(Arc::new(MockProvider {
+            settings: Arc::new(vec![]),
+            value_key: Arc::new(vec!["topic".to_string()]),
+        }))
+    }
+
+    #[test]
+    fn resolve_value_builds_key_from_value_key() {
+        let v = block_on(topic_resolver().resolve_value(br#"{"setting_code":"sc","topic":"t1"}"#))
+            .expect("valid JSON")
+            .expect("resolved");
+
+        assert_eq!(&*v.key, "t1", "key = value of the value_key field");
+        assert_eq!(&*v.setting_code, "sc");
+        assert_eq!(v.value_key, vec!["topic".to_string()]);
+    }
+
+    #[test]
+    fn resolve_value_errs_without_setting_code() {
+        let resolver = topic_resolver();
+        for raw in [
+            &br#"{"topic":"t1"}"#[..],
+            b"[1,2]",
+            br#"{"setting_code":5}"#,
+            b"{not json",
+        ] {
+            assert!(
+                matches!(
+                    block_on(resolver.resolve_value(raw)),
+                    Err(ResolveError::Value(
+                        value_rs::ValueRsError::SettingCodeNotFound
+                    ))
+                ),
+                "no readable setting_code -> Err (consumer routes to DLQ): {}",
+                String::from_utf8_lossy(raw)
+            );
+        }
+    }
+
+    #[test]
+    fn resolve_value_errs_on_broken_json() {
+        let resolver = topic_resolver();
+        assert!(
+            block_on(resolver.resolve_value(b"{not json")).is_err(),
+            "setting_code unreadable, JSON broken -> Err (consumer routes to DLQ)"
+        );
+        assert!(
+            block_on(resolver.resolve_value(br#"{"setting_code":"sc","topic":"t1",}"#)).is_err(),
+            "setting_code readable, JSON broken after it -> Err (consumer routes to DLQ)"
+        );
+    }
+
+    struct FailingProvider;
+
+    impl SettingProvider for FailingProvider {
+        fn get_cached_setting(&self, _sc: &str) -> Option<Arc<Vec<FunctionSetting>>> {
+            None
+        }
+        fn get_function_setting(&self, _sc: &str) -> Option<Arc<Vec<FunctionSetting>>> {
+            panic!("provider failure")
+        }
+        fn get_value_key(&self, _sc: &str) -> Option<Arc<Vec<String>>> {
+            None
+        }
+    }
+
+    #[test]
+    fn resolve_value_errs_when_setting_unresolved() {
+        let resolver = Resolver::new(Arc::new(FailingProvider));
+        let res = block_on(resolver.resolve_value(br#"{"setting_code":"sc","topic":"t1"}"#));
+        assert!(
+            matches!(&res, Err(ResolveError::Unresolved(sc)) if sc == "sc"),
+            "setting not resolved -> Err (consumer routes to DLQ): {res:?}"
+        );
+    }
+
+    #[test]
+    fn handle_batch_skips_message_without_payload() {
+        let publisher = Arc::new(MockPublisher::default());
+        let provider = Arc::new(MockProvider {
+            settings: Arc::new(vec![fs(
+                r#"{"isActive":true,"isKey":true,"key":"topic","module":["m1"]}"#,
+            )]),
+            value_key: Arc::new(vec!["topic".to_string()]),
+        });
+        let runtime: Arc<dyn Runtime> = Arc::new(MockRuntime { out: vec![] });
+        let plugin: Arc<dyn Plugin> = Arc::new(MockPlugin { out: vec![] });
+        let resolver = Arc::new(Resolver::new(provider));
+        let processor = Processor::new(publisher.clone(), resolver, runtime, plugin);
+
+        let msg = Message::new("src".into(), 0, 7, None, None, HashMap::new(), None);
+
+        let results = block_on(processor.handle_batch(vec![msg]));
+
+        assert_eq!(results, vec![Ok(())], "без payload -> пропуск, коммит");
+        assert!(
+            publisher.dlq.lock().unwrap().is_empty(),
+            "битые сообщения шлёт в DLQ консьюмер, не воркер"
+        );
+        assert!(
+            publisher.sent.lock().unwrap().is_empty(),
+            "без payload не публикуется"
+        );
+    }
+}

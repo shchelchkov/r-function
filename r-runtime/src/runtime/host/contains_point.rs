@@ -1,0 +1,42 @@
+use super::HostFn;
+use async_trait::async_trait;
+use r_error::runtime::error::RuntimeError;
+use r_tree::value::polygon::Polygon;
+use serde::Deserialize;
+use sonic_rs::Value;
+use std::sync::Arc;
+
+pub struct ContainsPoint {
+    pub values: Polygon,
+}
+
+#[derive(Deserialize)]
+struct Req {
+    setting_code: String,
+    key: String,
+    value: Value,
+}
+
+#[async_trait]
+impl HostFn for ContainsPoint {
+    fn name(&self) -> &'static str {
+        "contains_point"
+    }
+
+    async fn call(&self, input: &[u8]) -> Result<Option<Vec<u8>>, RuntimeError> {
+        let req: Req =
+            sonic_rs::from_slice(input).map_err(|e| RuntimeError::Decode(e.to_string()))?;
+        let key: Arc<str> = Arc::from(req.key.as_str());
+        match self
+            .values
+            .contains_point(&req.setting_code, &key, &req.value)
+        {
+            Some(v) => {
+                let bytes =
+                    sonic_rs::to_vec(&*v).map_err(|e| RuntimeError::Internal(e.to_string()))?;
+                Ok(Some(bytes))
+            }
+            None => Ok(None),
+        }
+    }
+}

@@ -1,0 +1,20 @@
+[package]
+name = "wasm-echo"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+serde_json = "1"
+
+[[bin]]
+name = "wasm-echo"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"
