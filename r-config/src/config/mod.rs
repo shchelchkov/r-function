@@ -46,6 +46,8 @@ pub struct FunctionConfig {
     pub git_consumer_setting: String,
     pub git_function_value: String,
     pub git_wasm_path: String,
+    #[serde(default = "plugin_path")]
+    pub git_plugin_path: String,
     pub git_revision: String,
     #[serde(default = "default_git_fetch_interval_secs")]
     pub git_fetch_interval_secs: u64,
@@ -53,6 +55,10 @@ pub struct FunctionConfig {
 
 fn default_git_fetch_interval_secs() -> u64 {
     30
+}
+
+pub fn plugin_path() -> String {
+    "plugin/function_settings".to_string()
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

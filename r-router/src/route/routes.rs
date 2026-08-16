@@ -2,9 +2,11 @@ use crate::route::catalog::{get_catalog_request, get_catalog_setting};
 use crate::route::consumer::{get_consumer_request, get_consumer_setting};
 use crate::route::functions::{get_function_request, get_function_setting, get_function_value};
 use crate::route::git::{get_git_head, post_git_refresh};
+use crate::route::plugin::{get_plugin_cache, get_plugin_resolve_cache};
 use crate::route::state::AppState;
 use crate::route::stream::get_stream_setting;
 use crate::route::values::{delete_value, get_value, get_values, put_value};
+use crate::route::wasm::{get_module_cache, get_module_resolve_cache};
 use crate::route::ws::ws_handler;
 use axum::{
     Router,
@@ -48,4 +50,9 @@ fn setting_routes() -> Router<AppState> {
         .route("/streams/{setting_code}", get(get_stream_setting))
         .route("/catalog/{setting_code}", get(get_catalog_setting))
         .route("/consumer/{setting_code}", get(get_consumer_setting))
+
+        .route("/plugin/cache/{setting_code}", get(get_plugin_cache))
+        .route("/plugin/resolve/{setting_code}", get(get_plugin_resolve_cache))
+        .route("/module/cache/{setting_code}", get(get_module_cache))
+        .route("/module/resolve/{setting_code}", get(get_module_resolve_cache))
 }

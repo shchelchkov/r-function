@@ -19,6 +19,7 @@ pub async fn run(cfg: AppConfig) -> Result<(), Box<dyn Error>> {
         git,
         processor,
         runtime,
+        plugin_module,
         observers,
         function,
         function_value,
@@ -26,6 +27,7 @@ pub async fn run(cfg: AppConfig) -> Result<(), Box<dyn Error>> {
         consumer_setting,
         stream,
         values,
+        polygon,
         feed,
     } = bootstrap::build(&cfg).await?;
 
@@ -65,7 +67,10 @@ pub async fn run(cfg: AppConfig) -> Result<(), Box<dyn Error>> {
         consumer_setting,
         stream,
         values,
+        polygon,
         feed,
+        plugin_module,
+        runtime,
         shutdown.subscribe(),
     )
     .await?;

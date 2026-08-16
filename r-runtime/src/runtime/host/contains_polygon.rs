@@ -2,12 +2,12 @@ use std::sync::Arc;
 use super::HostFn;
 use async_trait::async_trait;
 use r_error::runtime::error::RuntimeError;
-use r_tree::value::polygon::Values;
+use r_tree::value::polygon::Polygon;
 use serde::Deserialize;
 use sonic_rs::Value;
 
 pub struct ContainsPolygon {
-    pub values: Values,
+    pub values: Polygon,
 }
 
 #[derive(Deserialize)]

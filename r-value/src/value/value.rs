@@ -1,7 +1,6 @@
 use dashmap::DashMap;
 use sonic_rs::Value;
 use std::sync::Arc;
-use tracing::info;
 
 #[derive(Debug, Clone, Default)]
 pub struct Values {
@@ -40,7 +39,8 @@ impl Values {
         self.shared
             .values
             .iter()
-            .map(|e| (Arc::clone(e.key()), Arc::clone(e.value())))
+            .map(|e| (Arc::clone(e.key()), Arc::clone(e.value()))
+            )
             .collect()
     }
 }

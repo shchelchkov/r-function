@@ -1,0 +1,12 @@
+[package]
+name = "plugin-common"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "plugin_common"
+path = "src/lib.rs"
+
+[dependencies]
+sonic-rs = "0.5"
+r-plugin-api = { path = "../../../r-plugin-api" }

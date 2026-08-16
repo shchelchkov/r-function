@@ -12,3 +12,4 @@ rdkafka = { workspace = true }
 sonic-rs = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }

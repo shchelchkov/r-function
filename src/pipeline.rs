@@ -10,7 +10,7 @@ mod dispatcher;
 mod metrics;
 mod worker;
 
-use metrics::{spawn_pipeline_metrics, METRICS_INTERVAL};
+use metrics::{METRICS_INTERVAL, spawn_pipeline_metrics};
 
 pub struct Pipeline {
     ingress_tx: mpsc::Sender<Work>,
@@ -20,7 +20,7 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
-        pub fn spawn(cfg: &PipelineConfig, process: Arc<Processor>) -> Self {
+    pub fn spawn(cfg: &PipelineConfig, process: Arc<Processor>) -> Self {
         let (ingress_tx, ingress_rx) = mpsc::channel::<Work>(cfg.ingress_queue);
 
         let chunk_max = cfg.chunk_max.max(1);

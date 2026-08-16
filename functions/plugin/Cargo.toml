@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "plugin-common",
+    "f-test_key",
+    "f-directory_value",
+]
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"

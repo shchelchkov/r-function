@@ -48,7 +48,7 @@ impl<T: DeserializeOwned + Send + Sync + 'static> SettingStore<T> {
         self.shared.cache.get(code).map(|v| Arc::clone(&*v))
     }
 
-        pub fn get_or_load<F>(&self, value_code: &str, loader: F) -> Option<Arc<Vec<T>>>
+    pub fn get_or_load<F>(&self, value_code: &str, loader: F) -> Option<Arc<Vec<T>>>
     where
         F: FnOnce(&Repository, &str) -> Result<(ObjectId, Vec<T>), RuntimeError>,
     {

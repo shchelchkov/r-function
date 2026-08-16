@@ -8,3 +8,5 @@ pub mod stream;
 pub mod types;
 pub mod values;
 pub mod ws;
+pub mod plugin;
+pub mod wasm;

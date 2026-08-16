@@ -9,6 +9,9 @@ use r_setting::streams::stream::Stream;
 use r_value::value::value::Values;
 use std::sync::Arc;
 use tokio::sync::watch;
+use r_plugin::plugin::plugin_module::PluginModule;
+use r_runtime::runtime::wasm::WasmRuntime;
+use r_tree::value::polygon::Polygon;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -19,7 +22,10 @@ pub struct AppState {
     pub catalog: Catalog,
     pub consumer: Consumer,
     pub stream: Stream,
+    pub polygon: Polygon,
     pub feed: FeedHub,
+    pub plugin_module: Arc<PluginModule>,
+    pub wasm_runtime: Arc<WasmRuntime>,
     pub shutdown: watch::Receiver<bool>,
 }
 
@@ -68,6 +74,18 @@ impl FromRef<AppState> for Stream {
 impl FromRef<AppState> for FeedHub {
     fn from_ref(state: &AppState) -> Self {
         state.feed.clone()
+    }
+}
+
+impl FromRef<AppState> for Arc<PluginModule> {
+    fn from_ref(state: &AppState) -> Self {
+        state.plugin_module.clone()
+    }
+}
+
+impl FromRef<AppState> for Arc<WasmRuntime> {
+    fn from_ref(state: &AppState) -> Self {
+        state.wasm_runtime.clone()
     }
 }
 

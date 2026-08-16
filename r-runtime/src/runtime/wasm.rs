@@ -1,21 +1,19 @@
 use std::sync::Arc;
 
 use crate::runtime::executor::{StoreCtx, WasmExecutor};
-use crate::runtime::host::{
-    GetFunctionSetting, GetFunctionValue, GetStreamSetting, GetValue, HostRegistry, HttpRequest,
-    PutValue, RemoveValue, SendValue,
-};
-use crate::runtime::module_repository::WasmModuleRepository;
-use crate::runtime::send_pipeline::SendPipeline;
+use crate::runtime::host::{ContainsPoint, ContainsPolygon, GetFunctionSetting, GetFunctionValue, GetStreamSetting, GetValue, HostRegistry, HttpRequest, PutPolygon, PutValue, RemovePolygon, RemoveValue};
 use crate::runtime::loader::ModuleLoader;
+use crate::runtime::module_repository::WasmModuleRepository;
 use async_trait::async_trait;
-use r_runtime_api::Runtime;
 use r_error::runtime::error::RuntimeError;
+use r_producer::host::send_pipeline::{SendPipeline, SendValue};
 use r_producer::kafka::producer::Producer;
+use r_runtime_api::Runtime;
 use r_setting::functions::functions::Function;
 use r_setting::functions::functions_value::FunctionValue;
 use r_setting::git::HeadObserver;
 use r_setting::streams::stream::Stream;
+use r_tree::value::polygon::Polygon;
 use r_value::value::value::Values;
 use tracing::debug;
 use wasmtime::Linker;
@@ -39,6 +37,7 @@ impl WasmRuntime {
         function_value: FunctionValue,
         stream: Stream,
         values: Values,
+        polygon: Polygon,
         producer: Producer,
         max_instances: u32,
     ) -> Result<Self, RuntimeError> {
@@ -52,16 +51,34 @@ impl WasmRuntime {
         registry.register(GetFunctionSetting {
             function: function.clone(),
         });
+
         registry.register(GetValue {
             values: values.clone(),
             function_value: function_value.clone(),
         });
-        registry.register(GetFunctionValue { function_value });
-        registry.register(GetStreamSetting { stream });
         registry.register(PutValue {
             values: values.clone(),
         });
-        registry.register(RemoveValue { values });
+        registry.register(RemoveValue {
+            values: values.clone(),
+        });
+
+        registry.register(ContainsPoint {
+            values: polygon.clone(),
+        });
+        registry.register(ContainsPolygon {
+            values: polygon.clone(),
+        });
+        registry.register(PutPolygon {
+            values: polygon.clone(),
+        });
+        registry.register(RemovePolygon {
+            values: polygon.clone(),
+        });
+
+
+        registry.register(GetFunctionValue { function_value });
+        registry.register(GetStreamSetting { stream });
         registry.register(HttpRequest {
             client: reqwest::Client::new(),
         });
@@ -86,6 +103,14 @@ impl WasmRuntime {
             }),
         })
     }
+
+    pub fn entries_module_cache(&self) -> Vec<String> {
+        self.shared.repo.entries_module_cache()
+    }
+    
+    pub fn entries_resolve_cache(&self) -> Vec<String> {
+        self.shared.repo.entries_resolve_cache()
+    }
 }
 
 impl HeadObserver for WasmRuntime {
@@ -96,7 +121,7 @@ impl HeadObserver for WasmRuntime {
 
 #[async_trait]
 impl Runtime for WasmRuntime {
-    async fn invoke_raw(
+    async fn run_runtime(
         &self,
         module_name: &str,
         payload: Vec<u8>,

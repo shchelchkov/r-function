@@ -1,0 +1,29 @@
+[package]
+name = "r-plugin"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+r-config = { version = "0.1.0", path = "../r-config" }
+r-error = { version = "0.1.0", path = "../r-error" }
+r-plugin-api = { version = "0.1.0", path = "../r-plugin-api" }
+r-setting = { version = "0.1.0", path = "../r-setting" }
+r-producer = { version = "0.1.0", path = "../r-producer" }
+r-value = { version = "0.1.0", path = "../r-value" }
+r-tree = { version = "0.1.0", path = "../r-tree" }
+
+libloading = "0.9.0"
+
+anyhow = { workspace = true }
+futures = { workspace = true }
+gix = { workspace = true }
+dashmap = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
+tracing = { workspace = true }
+async-trait = "0.1.83"
+moka = { workspace = true, features = ["sync"] }
+arc-swap = { workspace = true }
+sonic-rs = { workspace = true }
+reqwest = { workspace = true }
+log = "0.4.29"

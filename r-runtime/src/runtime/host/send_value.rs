@@ -6,19 +6,10 @@ use r_error::runtime::error::RuntimeError;
 use serde::Deserialize;
 use sonic_rs::Value;
 use tokio::sync::mpsc::Sender;
-
+use r_producer::host::send_pipeline::{SendJob, SendValue};
 use super::HostFn;
 
-pub struct SendJob {
-    pub setting_code: String,
-    pub key: Option<Vec<u8>>,
-    pub channel: Option<Vec<u8>>,
-    pub payload: Vec<u8>,
-}
 
-pub struct SendValue {
-    pub txs: Arc<[Sender<SendJob>]>,
-}
 
 fn shard_for(key: Option<&[u8]>, shards: usize) -> usize {
     let mut h = std::collections::hash_map::DefaultHasher::new();
@@ -52,13 +43,16 @@ impl HostFn for SendValue {
         let key = (!req.key.is_empty()).then(|| req.key.into_bytes());
 
         let shard = shard_for(key.as_deref(), self.txs.len());
+
+        let job = SendJob {
+            setting_code: req.setting_code,
+            key,
+            channel,
+            payload,
+        };
+        
         self.txs[shard]
-            .send(SendJob {
-                setting_code: req.setting_code,
-                key,
-                channel,
-                payload,
-            })
+            .send(job)
             .await
             .map_err(|_| RuntimeError::Producer("send queue closed".into()))?;
 

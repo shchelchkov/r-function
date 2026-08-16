@@ -29,7 +29,6 @@ pub use put_polygon::PutPolygon;
 pub use remove_polygon::RemovePolygon;
 pub use contains_polygon::ContainsPolygon;
 pub use contains_point::ContainsPoint;
-pub use send_value::{SendJob, SendValue};
 
 use crate::runtime::executor::StoreCtx;
 

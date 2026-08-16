@@ -10,10 +10,9 @@ use rdkafka::error::{KafkaError as RdKafkaError, RDKafkaErrorCode};
 use rdkafka::producer::{FutureProducer, FutureRecord};
 
 pub use rdkafka::producer::DeliveryFuture;
-use sonic_rs::{JsonContainerTrait, JsonValueMutTrait, JsonValueTrait, Value};
-
 use crate::kafka::client;
 use crate::kafka::dlq;
+use sonic_rs::{JsonContainerTrait, JsonValueMutTrait, JsonValueTrait, Value};
 pub use crate::kafka::dlq::DlqContext;
 pub use crate::kafka::error::KafkaSendError;
 use crate::kafka::route::RouteSource;
@@ -182,6 +181,7 @@ impl Producer {
         key: Option<&[u8]>,
         payload: Vec<u8>,
     ) -> Result<(), KafkaSendError> {
+
         if setting_code.is_empty() {
             return Err(KafkaSendError {
                 details: "setting_code is empty".to_string(),

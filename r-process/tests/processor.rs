@@ -1,15 +1,15 @@
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use async_trait::async_trait;
     use r_error::runtime::error::RuntimeError;
+    use r_plugin_api::Plugin;
+    use r_process::process::{Message, MessagePublisher, Processor, SettingProvider};
     use r_producer::kafka::producer::{DlqContext, KafkaSendError};
+    use r_runtime_api::Runtime;
     use r_setting::functions::function_setting::FunctionSetting;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
-    use r_process::process::{Message, MessagePublisher, Processor, SettingProvider};
-    use r_runtime_api::Runtime;
 
     #[derive(Default)]
     struct MockPublisher {
@@ -66,7 +66,7 @@ mod tests {
 
     #[async_trait]
     impl Runtime for MockRuntime {
-        async fn invoke_raw(
+        async fn run_runtime(
             &self,
             _module: &str,
             _payload: Vec<u8>,
@@ -75,6 +75,21 @@ mod tests {
         }
     }
 
+
+    struct MockPlugin {
+        out: Vec<u8>,
+    }
+
+    #[async_trait]
+    impl Plugin for MockPlugin {
+        async fn run_plugin(
+            &self,
+            _module: &str,
+            _payload: Vec<u8>,
+        ) -> Result<Vec<u8>, RuntimeError> {
+            Ok(self.out.clone())
+        }
+    }
     fn fs(json: &str) -> FunctionSetting {
         sonic_rs::from_slice(json.as_bytes()).expect("valid function setting")
     }
@@ -99,7 +114,11 @@ mod tests {
             out: br#"[{"r":1}]"#.to_vec(),
         });
 
-        let processor = Processor::new(publisher.clone(), provider, runtime);
+        let plugin: Arc<dyn Plugin> = Arc::new(MockPlugin {
+            out: br#"[{"r":1}]"#.to_vec(),
+        });
+
+        let processor = Processor::new(publisher.clone(), provider, runtime, plugin);
 
         let msg = Message::new(
             "src".into(),
@@ -138,7 +157,8 @@ mod tests {
             value_key: Arc::new(vec!["topic".to_string()]),
         });
         let runtime: Arc<dyn Runtime> = Arc::new(MockRuntime { out: vec![] });
-        let processor = Processor::new(publisher.clone(), provider, runtime);
+        let plugin: Arc<dyn Plugin> = Arc::new(MockPlugin { out: vec![] });
+        let processor = Processor::new(publisher.clone(), provider, runtime, plugin);
 
         let msg = Message::new(
             "src".into(),

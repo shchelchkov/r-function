@@ -6,7 +6,7 @@ use crate::value::convert::{value_to_polygon, PolygonError, value_to_point};
 use crate::value::model::{Bucket, PolygonKey, PolygonObject};
 
 #[derive(Debug, Clone, Default)]
-pub struct Values {
+pub struct Polygon {
     shared: Arc<Shared>,
 }
 
@@ -16,7 +16,7 @@ struct Shared {
     values: DashMap<i64, Arc<Value>>,
 }
 
-impl Values {
+impl Polygon {
     pub fn new() -> Self {
         Self::default()
     }

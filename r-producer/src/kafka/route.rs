@@ -8,7 +8,7 @@ pub(crate) enum RouteSource {
 }
 
 impl RouteSource {
-        pub(crate) fn routes<'a>(
+    pub(crate) fn routes<'a>(
         &'a self,
         fallback: &'a [String],
     ) -> Box<dyn Iterator<Item = (&'a str, Option<&'a str>)> + 'a> {

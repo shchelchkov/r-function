@@ -14,8 +14,11 @@ members = [
     "r-feed",
     "r-setting",
     "r-value",
+    "r-tree",
     "r-runtime-api",
     "r-runtime",
+    "r-plugin-api",
+    "r-plugin",
     "r-watchdog",
 ]
 exclude = ["functions"]
@@ -37,13 +40,18 @@ futures = "0.3"
 bytes = "1"
 
 [dependencies]
-r-config = { version = "0.1.0", path = "./r-config" }
-r-consumer = { version = "0.1.0", path = "./r-consumer" }
-r-runtime = { version = "0.1.0", path = "./r-runtime" }
-r-router = { version = "0.1.0", path = "./r-router" }
-r-feed = { version = "0.1.0", path = "./r-feed" }
-r-value = { version = "0.1.0", path = "./r-value" }
-r-watchdog = { version = "0.1.0", path = "./r-watchdog" }
+r-config = { version = "0.1.0", path = "r-config" }
+r-consumer = { version = "0.1.0", path = "r-consumer" }
+r-runtime = { version = "0.1.0", path = "r-runtime" }
+r-plugin = { version = "0.1.0", path = "r-plugin" }
+r-plugin-api = { version = "0.1.0", path = "r-plugin-api" }
+r-router = { version = "0.1.0", path = "r-router" }
+r-feed = { version = "0.1.0", path = "r-feed" }
+r-value = { version = "0.1.0", path = "r-value" }
+r-tree = { version = "0.1.0", path = "r-tree" }
+r-watchdog = { version = "0.1.0", path = "r-watchdog" }
+r-setting = { version = "0.1.0", path = "r-setting" }
+
 tokio = { workspace = true, features = ["rt-multi-thread", "net", "signal", "time", "sync"] }
 axum = "0.8.8"
 futures = { workspace = true }

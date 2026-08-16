@@ -16,6 +16,9 @@ use r_value::value::value::Values;
 use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tracing::info;
+use r_plugin::plugin::plugin_module::PluginModule;
+use r_runtime::runtime::wasm::WasmRuntime;
+use r_tree::value::polygon::Polygon;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn serve(
@@ -27,7 +30,10 @@ pub async fn serve(
     consumer: Consumer,
     stream: Stream,
     values: Values,
+    polygon: Polygon,
     feed: FeedHub,
+    plugin_module: Arc<PluginModule>,
+    wasm_runtime: Arc<WasmRuntime>,
     mut shutdown: watch::Receiver<bool>,
 ) -> Result<(), Box<dyn Error>> {
     let ws_shutdown = shutdown.clone();
@@ -39,7 +45,10 @@ pub async fn serve(
         catalog,
         consumer,
         stream,
+        polygon,
         feed,
+        plugin_module,
+        wasm_runtime,
         shutdown: ws_shutdown,
     };
     let app = routes::build_router(app_state, &cfg.api_prefix, &cfg.api_directory);

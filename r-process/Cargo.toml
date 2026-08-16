@@ -10,6 +10,7 @@ r-producer = { version = "0.1.0", path = "../r-producer" }
 r-error = { version = "0.1.0", path = "../r-error" }
 r-value = { version = "0.1.0", path = "../r-value" }
 r-runtime-api = { version = "0.1.0", path = "../r-runtime-api" }
+r-plugin-api = { version = "0.1.0", path = "../r-plugin-api" }
 
 rdkafka = { workspace = true }
 tracing = { workspace = true }

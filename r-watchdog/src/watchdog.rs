@@ -46,7 +46,7 @@ impl Shared {
         let payload = build_payload(&self.cfg.setting_code, &self.cfg.key, now_ns());
         if let Err(e) = self
             .runtime
-            .invoke_raw(&self.cfg.module_name, payload)
+            .run_runtime(&self.cfg.module_name, payload)
             .await
         {
             tracing::warn!(module = %self.cfg.module_name, error = %e, "watchdog tick failed");

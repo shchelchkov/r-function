@@ -19,6 +19,7 @@ pub struct FunctionSetting {
     is_active: Option<bool>,
     is_cached: Option<bool>,
     module: Option<Vec<String>>,
+    plugin: Option<Vec<String>>,
     formula: Option<Vec<String>>,
     function: Option<Vec<String>>,
     string_matcher: Option<String>,
@@ -31,6 +32,11 @@ impl FunctionSetting {
     #[must_use]
     pub fn key(&self) -> Option<&str> {
         self.key.as_deref()
+    }
+    
+    #[must_use]
+    pub fn setting_code(&self) -> Option<&str> {
+        self.setting_code.as_deref()
     }
 
     #[must_use]
@@ -46,6 +52,11 @@ impl FunctionSetting {
     #[must_use]
     pub fn module(&self) -> Option<&[String]> {
         self.module.as_deref()
+    }
+
+    #[must_use]
+    pub fn plugin(&self) -> Option<&[String]> {
+        self.plugin.as_deref()
     }
 
     #[must_use]

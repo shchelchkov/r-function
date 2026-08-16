@@ -46,10 +46,14 @@ impl WasmModuleRepository {
         }
     }
 
-        pub async fn instance_pre(
+    pub async fn instance_pre(
         self: &Arc<Self>,
         module_name: &str,
     ) -> Result<InstancePre<StoreCtx>, RuntimeError> {
+        if let Some(pre) = self.module_cache.get(module_name).await {
+            return Ok(pre);
+        }
+
         let oid = match self.resolve_cache.get(module_name).await {
             Some(oid) => oid,
             None => self
@@ -173,5 +177,20 @@ impl WasmModuleRepository {
         })
         .await
         .map_err(|e| RuntimeError::Internal(e.to_string()))?
+    }
+
+
+    pub fn entries_module_cache(&self) -> Vec<String> {
+        self.module_cache
+            .iter()
+            .map(|(key, _instancePre)| key.to_string())
+            .collect()
+    }
+
+    pub fn entries_resolve_cache(&self) -> Vec<String> {
+        self.resolve_cache
+            .iter()
+            .map(|(key, _oid)| key.to_string())
+            .collect()
     }
 }

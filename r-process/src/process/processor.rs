@@ -1,18 +1,19 @@
-use r_producer::kafka::producer::DlqContext;
-use r_runtime_api::Runtime;
-use std::sync::Arc;
-
 use crate::process::Message;
 use crate::process::chain;
 use crate::process::grouping::{Group, Grouped, group_messages};
 use crate::process::provider::SettingProvider;
 use crate::process::publisher::MessagePublisher;
 use crate::process::resolver;
+use r_plugin_api::Plugin;
+use r_producer::kafka::producer::DlqContext;
+use r_runtime_api::Runtime;
+use std::sync::Arc;
 
 pub struct Processor {
     producer: Arc<dyn MessagePublisher>,
     function: Arc<dyn SettingProvider>,
     runtime: Arc<dyn Runtime>,
+    plugin: Arc<dyn Plugin>,
 }
 
 impl Processor {
@@ -20,15 +21,17 @@ impl Processor {
         producer: Arc<dyn MessagePublisher>,
         function: Arc<dyn SettingProvider>,
         runtime: Arc<dyn Runtime>,
+        plugin: Arc<dyn Plugin>,
     ) -> Self {
         Self {
             producer,
             function,
             runtime,
+            plugin,
         }
     }
 
-            pub async fn handle_batch(&self, msgs: Vec<Message>) -> Vec<Result<(), ()>> {
+    pub async fn handle_batch(&self, msgs: Vec<Message>) -> Vec<Result<(), ()>> {
         let resolved = resolver::resolve_all(&self.function, &msgs).await;
         let Grouped {
             mut results,
@@ -40,6 +43,10 @@ impl Processor {
         }
         for (setting_code, group) in groups {
             let res = self.emit_group(&msgs, &setting_code, &group).await;
+            if res.is_ok() {
+                let res = self.emit_group_plugin(&msgs, &setting_code, &group).await;
+            }
+
             for &idx in &group.idxs {
                 results[idx] = res;
             }
@@ -67,7 +74,47 @@ impl Processor {
                     }
                 }
             }
+
             Ok(None) => Ok(()), 
+
+            Err(e) if e.is_transient() => {
+                tracing::warn!(error = %e, setting_code, "group transient failure");
+                Err(())
+            }
+            Err(e) => {
+                let reason = e.to_string();
+                tracing::warn!(error = %reason, setting_code, "group poison; routing to DLQ");
+                for &idx in &group.idxs {
+                    self.route_dlq(&msgs[idx], &reason).await;
+                }
+                Ok(())
+            }
+        }
+    }
+
+    async fn emit_group_plugin(
+        &self,
+        msgs: &[Message],
+        setting_code: &str,
+        group: &Group,
+    ) -> Result<(), ()> {
+        match chain::execute_plugin(&self.plugin, &group.batch, &group.settings).await {
+            Ok(Some(result)) => {
+                match self
+                    .producer
+                    .send_objects(setting_code, group.out_key.as_deref(), result)
+                    .await
+                {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        tracing::warn!(error = %e, setting_code, "group send failed (transient)");
+                        Err(())
+                    }
+                }
+            }
+
+            Ok(None) => Ok(()),
+
             Err(e) if e.is_transient() => {
                 tracing::warn!(error = %e, setting_code, "group transient failure");
                 Err(())

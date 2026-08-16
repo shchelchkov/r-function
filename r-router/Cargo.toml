@@ -6,8 +6,11 @@ edition = "2024"
 [dependencies]
 r-config = { version = "0.1.0", path = "../r-config" }
 r-setting = { version = "0.1.0", path = "../r-setting" }
+r-plugin = { version = "0.1.0", path = "../r-plugin" }
+r-runtime = { version = "0.1.0", path = "../r-runtime" }
 r-error = { version = "0.1.0", path = "../r-error" }
 r-value = { version = "0.1.0", path = "../r-value" }
+r-tree = { version = "0.1.0", path = "../r-tree" }
 r-feed = { version = "0.1.0", path = "../r-feed" }
 
 anyhow = { workspace = true }
