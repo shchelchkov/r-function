@@ -1,9 +1,9 @@
 use crate::host::{ctx_key, ctx_value};
 use crate::plugin::PluginContext;
+use r_plugin_api::Buffer;
 use std::ffi::c_void;
-use std::sync::Arc;
 
-pub unsafe extern "C" fn host_put_value(
+pub unsafe extern "C" fn host_contains_polygon(
     ctx: *mut c_void,
     setting_code_ptr: *const u8,
     setting_code_len: usize,
@@ -11,7 +11,7 @@ pub unsafe extern "C" fn host_put_value(
     key_len: usize,
     value_ptr: *const u8,
     value_len: usize,
-) {
+) -> Buffer {
     let ctx = unsafe {
         &*(ctx as *const PluginContext)
     };
@@ -32,11 +32,34 @@ pub unsafe extern "C" fn host_put_value(
         )
     };
 
-    ctx.values.put_value(
+    let mut json = match ctx.polygon.contains_polygon(
         &setting_code,
-        Arc::from(key),
-        value,
-    );
+        key.as_str(),
+        &value,
+    ) {
+        Some(v) => {
+            sonic_rs::to_vec(&v)
+                .expect("serialize value")
+        }
+
+        None => {
+            return Buffer {
+                ptr: std::ptr::null_mut(),
+                len: 0,
+                capacity: 0,
+            };
+        }
+    };
+
+    let buffer = Buffer {
+        ptr: json.as_mut_ptr(),
+        len: json.len(),
+        capacity: json.capacity(),
+    };
+
+    std::mem::forget(json);
+
+    buffer
 }
 
 

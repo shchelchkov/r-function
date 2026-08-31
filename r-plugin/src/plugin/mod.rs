@@ -5,6 +5,7 @@ use r_producer::kafka::producer::Producer;
 use r_setting::functions::functions::Function;
 use r_setting::functions::functions_value::FunctionValue;
 use r_setting::streams::stream::Stream;
+use r_tree::value::polygon::Polygon;
 use r_value::value::value::Values;
 
 pub mod plugin_module;
@@ -20,5 +21,6 @@ pub struct PluginContext {
     pub stream: Stream,
     pub values: Values,
     pub producer: Producer,
+    pub polygon: Polygon,
     pub send_value: SendValue,
 }

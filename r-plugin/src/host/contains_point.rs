@@ -1,15 +1,17 @@
-use std::ffi::c_void;
-
-use crate::host::ctx_key;
+use crate::host::{ctx_key, ctx_value};
 use crate::plugin::PluginContext;
 use r_plugin_api::Buffer;
+use std::ffi::c_void;
+use r_error::runtime::error::RuntimeError;
 
-pub unsafe extern "C" fn host_get_value(
+pub unsafe extern "C" fn host_contains_point(
     ctx: *mut c_void,
     setting_code_ptr: *const u8,
     setting_code_len: usize,
     key_ptr: *const u8,
     key_len: usize,
+    value_ptr: *const u8,
+    value_len: usize,
 ) -> Buffer {
     let ctx = unsafe {
         &*(ctx as *const PluginContext)
@@ -23,13 +25,21 @@ pub unsafe extern "C" fn host_get_value(
             key_len,
         )
     };
-    
-    let mut json = match ctx.values.get_value(
+
+    let value = unsafe {
+        ctx_value(
+            value_ptr,
+            value_len,
+        )
+    };
+
+    let mut json = match ctx.polygon.contains_point(
         &setting_code,
-        &key,
+        key.as_str(),
+        &value,
     ) {
-        Some(value) => {
-            sonic_rs::to_vec(value.as_ref())
+        Some(v) => {
+            sonic_rs::to_vec(&v)
                 .expect("serialize value")
         }
 
@@ -52,3 +62,5 @@ pub unsafe extern "C" fn host_get_value(
 
     buffer
 }
+
+

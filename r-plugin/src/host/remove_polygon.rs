@@ -3,7 +3,7 @@ use crate::plugin::PluginContext;
 use std::ffi::c_void;
 use std::sync::Arc;
 
-pub unsafe extern "C" fn host_put_value(
+pub unsafe extern "C" fn host_remove_polygon(
     ctx: *mut c_void,
     setting_code_ptr: *const u8,
     setting_code_len: usize,
@@ -32,7 +32,8 @@ pub unsafe extern "C" fn host_put_value(
         )
     };
 
-    ctx.values.put_value(
+
+    ctx.polygon.remove_polygon(
         &setting_code,
         Arc::from(key),
         value,

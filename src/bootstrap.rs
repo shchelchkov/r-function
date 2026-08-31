@@ -86,6 +86,7 @@ pub async fn build(cfg: &AppConfig) -> Result<Components, Box<dyn Error>> {
         function_value.clone(),
         stream.clone(),
         values.clone(),
+        polygon.clone(),
         producer.clone(),
         max_instances,
     )?);

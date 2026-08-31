@@ -1,6 +1,6 @@
 use crate::Buffer;
-use std::ffi::c_void;
 use sonic_rs::Value;
+use std::ffi::c_void;
 
 unsafe impl Send for HostApi {}
 unsafe impl Sync for HostApi {}
@@ -31,6 +31,59 @@ pub struct HostApi {
         key_ptr: *const u8,
         key_len: usize,
     ) -> Buffer,
+
+    pub contains_point: unsafe extern "C" fn(
+        ctx: *mut c_void,
+
+        setting_code_ptr: *const u8,
+        setting_code_len: usize,
+
+        key_ptr: *const u8,
+        key_len: usize,
+
+        value_ptr: *const u8,
+        value_len: usize,
+    ) -> Buffer,
+
+    pub contains_polygon: unsafe extern "C" fn(
+        ctx: *mut c_void,
+
+        setting_code_ptr: *const u8,
+        setting_code_len: usize,
+
+        key_ptr: *const u8,
+        key_len: usize,
+
+        value_ptr: *const u8,
+        value_len: usize,
+    ) -> Buffer,
+
+    pub put_polygon: unsafe extern "C" fn(
+        ctx: *mut c_void,
+
+        setting_code_ptr: *const u8,
+        setting_code_len: usize,
+
+        key_ptr: *const u8,
+        key_len: usize,
+
+        value_ptr: *const u8,
+        value_len: usize,
+    ),
+
+    pub remove_polygon: unsafe extern "C" fn(
+        ctx: *mut c_void,
+
+        setting_code_ptr: *const u8,
+        setting_code_len: usize,
+
+        key_ptr: *const u8,
+        key_len: usize,
+
+        value_ptr: *const u8,
+        value_len: usize,
+    ),
+
 
     pub send_value: unsafe extern "C" fn(
         ctx: *mut c_void,

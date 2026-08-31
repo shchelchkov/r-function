@@ -13,6 +13,7 @@ use r_setting::streams::stream::Stream;
 use r_value::value::value::Values;
 use std::sync::Arc;
 use r_producer::host::send_pipeline::SendPipeline;
+use r_tree::value::polygon::Polygon;
 
 pub struct PluginModule {
     shared: Arc<Shared>,
@@ -41,6 +42,7 @@ impl PluginModule {
         function_value: FunctionValue,
         stream: Stream,
         values: Values,
+        polygon: Polygon,
         producer: Producer,
         max_instances: u32,
     ) -> Result<Self, RuntimeError> {
@@ -54,6 +56,7 @@ impl PluginModule {
             function_value: function_value.clone(),
             stream: stream.clone(),
             values: values.clone(),
+            polygon: polygon.clone(),
             producer: producer.clone(),
             send_value,
         });
