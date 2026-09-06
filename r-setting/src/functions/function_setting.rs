@@ -50,7 +50,7 @@ impl FunctionSetting {
     }
 
     #[must_use]
-    pub fn module(&self) -> Option<&[String]> {
+    pub fn modules(&self) -> Option<&[String]> {
         self.module.as_deref()
     }
 

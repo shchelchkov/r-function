@@ -4,6 +4,7 @@ use std::fmt;
 pub enum PluginError {
     InvalidInput(String),
     Processing(String),
+    Internal(String),
     Encode(String),
     Decode(String),
 }
@@ -17,6 +18,10 @@ impl fmt::Display for PluginError {
 
             Self::Processing(message) => {
                 write!(f, "processing error: {message}")
+            }
+
+            Self::Internal(message) => {
+                write!(f, "internal error: {message}")
             }
 
             Self::Encode(message) => {

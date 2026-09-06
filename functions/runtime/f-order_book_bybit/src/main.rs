@@ -1,14 +1,13 @@
+use f_common::fun;
 use run_common::order_book_bybit;
 use sonic_rs::{JsonContainerTrait, Value};
 use std::io::{self, Read, Write};
-use std::time::{SystemTime, UNIX_EPOCH};
-use f_common::fun;
 
 fn main() {
     let mut buf = Vec::new();
     io::stdin().read_to_end(&mut buf).expect("read stdin");
 
-    let mut v: Value = fun::from_slice(&mut buf);
+    let mut v: Value = fun::from_slice(&buf);
 
     if let Some(values) = v.as_array() {
         for value in values.iter() {

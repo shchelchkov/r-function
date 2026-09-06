@@ -3,8 +3,7 @@ use crate::plugin::executor::PluginExecutor;
 use crate::plugin::loader::PluginLoader;
 use crate::plugin::plugin_repository::PluginRepository;
 use async_trait::async_trait;
-use r_error::runtime::error::RuntimeError;
-use r_plugin_api::Plugin;
+use r_plugin_api::{Plugin, PluginError};
 use r_producer::kafka::producer::Producer;
 use r_setting::functions::functions::Function;
 use r_setting::functions::functions_value::FunctionValue;
@@ -12,6 +11,7 @@ use r_setting::git::HeadObserver;
 use r_setting::streams::stream::Stream;
 use r_value::value::value::Values;
 use std::sync::Arc;
+use r_error::runtime::error::RuntimeError;
 use r_producer::host::send_pipeline::SendPipeline;
 use r_tree::value::polygon::Polygon;
 
@@ -45,7 +45,7 @@ impl PluginModule {
         polygon: Polygon,
         producer: Producer,
         max_instances: u32,
-    ) -> Result<Self, RuntimeError> {
+    ) -> Result<Self, PluginError> {
         let executor = PluginExecutor::new()?;
 
         let (send, send_txs) = SendPipeline::new(producer.clone());
@@ -98,6 +98,7 @@ impl Plugin for PluginModule {
     ) -> Result<Vec<u8>, RuntimeError> {
         let pre = self.shared.repo.get(plugin_name).await?;
         let ctx = self.shared.repo.context();
-        self.shared.executor.run(&pre, payload, ctx).await
+        self.shared.executor.run(pre, payload, ctx).await
     }
 }
+

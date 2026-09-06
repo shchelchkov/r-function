@@ -19,7 +19,7 @@ pub(crate) async fn execute_batch(
         }
 
         let modules: Vec<&str> = fs
-            .module()
+            .modules()
             .unwrap_or(&[])
             .iter()
             .map(String::as_str)

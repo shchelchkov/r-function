@@ -1,7 +1,7 @@
 use crate::plugin::PluginContext;
 use r_error::runtime::error::RuntimeError;
-use r_plugin_api::Buffer;
-use r_producer::host::send_pipeline::{SendJob, SendValue};
+use r_plugin_api::{Buffer, PluginError};
+use r_producer::host::send_pipeline::{Req, SendJob, SendValue};
 use std::ffi::c_void;
 use std::hash::{Hash, Hasher};
 
@@ -69,8 +69,6 @@ pub unsafe extern "C" fn host_send_value(
     };
 
     let setting_code = setting_code.to_vec();
-    let key = key.to_vec();
-    let channel = channel.to_vec();
     let payload = payload.to_vec();
 
     let state = &ctx.send_value;
@@ -79,9 +77,6 @@ pub unsafe extern "C" fn host_send_value(
     handle.spawn(async move {
         if let Err(err) = host_send_value_impl(
             state,
-            &setting_code,
-            &key,
-            &channel,
             &payload,
         )
             .await
@@ -108,25 +103,23 @@ unsafe fn slice_from_raw_parts<'a>(
 
 pub async fn host_send_value_impl(
     state: &SendValue,
-    setting_code: &[u8],
-    key: &[u8],
-    channel: &[u8],
-    payload: &[u8],
+    input: &[u8],
 ) -> Result<Buffer, RuntimeError> {
-    let setting_code = String::from_utf8_lossy(setting_code).into_owned();
-    let key = key.to_vec();
-    let channel = channel.to_vec();
+    let req: Req =
+        sonic_rs::from_slice(input).map_err(|e| RuntimeError::Decode(e.to_string()))?;
+    let payload =
+        sonic_rs::to_vec(&req.value).map_err(|e| RuntimeError::Payload(e.to_string()))?;
 
-    let shard = shard_for(
-        Some(&key),
-        state.txs.len(),
-    );
+    let channel = (!req.channel.is_empty()).then(|| req.channel.into_bytes());
+    let key = (!req.key.is_empty()).then(|| req.key.into_bytes());
+
+    let shard = shard_for(key.as_deref(), state.txs.len());
 
     let job = SendJob {
-        setting_code,
-        key: Some(key),
-        channel: Some(channel),
-        payload: payload.to_vec(),
+        setting_code: req.setting_code,
+        key: key,
+        channel: channel,
+        payload: payload,
     };
 
     state.txs[shard]

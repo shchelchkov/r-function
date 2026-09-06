@@ -21,3 +21,7 @@ pub mod trades_bybit;
 pub mod trades_state;
 pub mod user_resource;
 pub mod value;
+mod ema_value;
+mod book_state_value;
+mod trade_value;
+mod order_book_state_value;

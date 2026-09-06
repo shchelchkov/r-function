@@ -1,13 +1,14 @@
 [package]
-name = "plugin-common"
+name = "f-order_book_bybit"
 version = "0.1.0"
 edition = "2024"
 
 [lib]
-name = "plugin_common"
-path = "src/lib.rs"
+crate-type = ["cdylib"]
 
 [dependencies]
-sonic-rs = "0.5"
 r-plugin-api = { path = "../../../r-plugin-api" }
 f-common = { path = "../../fun/f-common" }
+plugin-common = { path = "../plugin-common" }
+sonic-rs = "0.5.8"
+log = "0.4.29"

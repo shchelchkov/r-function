@@ -2,6 +2,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 use r_producer::host::send_pipeline::SendValue;
 use r_producer::kafka::producer::Producer;
+use r_setting::functions::function_setting::FunctionSetting;
 use r_setting::functions::functions::Function;
 use r_setting::functions::functions_value::FunctionValue;
 use r_setting::streams::stream::Stream;

@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use crate::host::ctx_key;
+use crate::host::ctx_setting_code_key;
 use crate::plugin::PluginContext;
 use r_plugin_api::Buffer;
 
@@ -16,7 +16,7 @@ pub unsafe extern "C" fn host_get_value(
     };
 
     let (setting_code, key) = unsafe {
-        ctx_key(
+        ctx_setting_code_key(
             setting_code_ptr,
             setting_code_len,
             key_ptr,

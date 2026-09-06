@@ -10,6 +10,7 @@ r-setting = { version = "0.1.0", path = "../r-setting" }
 r-feed = { version = "0.1.0", path = "../r-feed" }
 rdkafka = { workspace = true }
 sonic-rs = { workspace = true }
+serde = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }

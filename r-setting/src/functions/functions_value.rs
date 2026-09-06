@@ -42,33 +42,21 @@ impl FunctionValue {
             return Some(v);
         }
 
-        info!(
-            "get_function_value:::::::::::: setting_code/key {:?}",
-            &value_code
-        );
         match self
             .shared
             .settings
             .get_or_load(setting_code, fetch_setting)
         {
             Some(settings) => {
-                info!(
-                    "get_function_value:::::::::::: 0000 setting_code={setting_code} key={key} spec {:?}",
-                    &settings
-                );
                 let schema = build_schema(&settings);
 
                 self.shared
                     .values
                     .get_or_load(&value_code, move |repo, spec| {
-                        info!("get_function_value:::::::::::: 0001 setting_code={setting_code} key={key} spec {:?}", &spec);
                         fetch_setting_value(repo, &schema, spec)
                     })
             }
             None => {
-                info!(
-                    "get_function_value:::::::::::: 0002 setting_code={setting_code} key={key} spec None"
-                );
                 self.shared
                     .values
                     .get_or_load(&value_code, |repo, spec| fetch_setting(repo, spec))

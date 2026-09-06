@@ -1,5 +1,5 @@
-use crate::Buffer;
-use sonic_rs::Value;
+use crate::{Buffer, PluginError};
+use sonic_rs::{JsonContainerTrait, JsonValueTrait, Object, Value};
 use std::ffi::c_void;
 
 unsafe impl Send for HostApi {}
@@ -101,6 +101,24 @@ pub struct HostApi {
         payload_len: usize,
     ) -> Buffer,
 
+    pub get_function_value: unsafe extern "C" fn(
+        ctx: *mut c_void,
+
+        setting_code_ptr: *const u8,
+        setting_code_len: usize,
+
+        key_ptr: *const u8,
+        key_len: usize,
+
+    ) -> Buffer,
+
+    pub get_function_setting: unsafe extern "C" fn(
+        ctx: *mut c_void,
+
+        setting_code_ptr: *const u8,
+        setting_code_len: usize
+    ) -> Buffer,
+
     pub free_buffer: unsafe extern "C" fn(
         buffer: Buffer,
     ),
@@ -139,7 +157,7 @@ impl HostApi {
         &self,
         setting_code: &str,
         key: &str,
-    ) -> Option<Value> {
+    ) -> Option<Vec<Value>> {
         let buffer = unsafe {
             (self.get_value)(
                 self.ctx,
@@ -171,16 +189,87 @@ impl HostApi {
 
         result
     }
+    
+    pub fn get_function_value(
+        &self,
+        setting_code: &str,
+        key: &str,
+    ) -> Option<Value> {
+        let buffer = unsafe {
+            (self.get_function_value)(
+                self.ctx,
+
+                setting_code.as_ptr(),
+                setting_code.len(),
+
+                key.as_ptr(),
+                key.len(),
+            )
+        };
+
+        if buffer.ptr.is_null() {
+            return None;
+        }
+
+        let result = unsafe {
+            let bytes = std::slice::from_raw_parts(
+                buffer.ptr,
+                buffer.len,
+            );
+
+            sonic_rs::from_slice(bytes).ok()
+        };
+
+        unsafe {
+            (self.free_buffer)(buffer);
+        }
+
+        result
+    }
+    pub fn get_function_setting(
+        &self,
+        setting_code: &str,
+    ) -> Option<Vec<Value>> {
+        let buffer = unsafe {
+            (self.get_function_setting)(
+                self.ctx,
+
+                setting_code.as_ptr(),
+                setting_code.len(),
+            )
+        };
+
+        if buffer.ptr.is_null() {
+            return None;
+        }
+
+        let result = unsafe {
+            let bytes = std::slice::from_raw_parts(
+                buffer.ptr,
+                buffer.len,
+            );
+
+            sonic_rs::from_slice(bytes).ok()
+        };
+
+        unsafe {
+            (self.free_buffer)(buffer);
+        }
+
+        result
+    }
+
 
     pub fn send_value(
         &self,
-        setting_code: &str,
-        key: Option<&[u8]>,
-        channel: Option<&[u8]>,
-        payload: &[u8],
-    ) {
-        let key = key.unwrap_or_default();
-        let channel = channel.unwrap_or_default();
+        value: &Object
+    ) -> Result<(), PluginError> {
+
+        let setting_code: &str = value.get(&"setting_code").and_then(|v| v.as_str()).unwrap_or_default();
+        let key:  &str = value.get(&"key").and_then(|v| v.as_str()).unwrap_or_default();
+        let channel:  &str = value.get(&"channel").and_then(|v| v.as_str()).unwrap_or_default();
+        let payload = sonic_rs::to_vec(&value)
+            .map_err(|e| PluginError::Encode(e.to_string()))?;
 
         unsafe {
             (self.send_value)(
@@ -199,5 +288,6 @@ impl HostApi {
                 payload.len(),
             );
         }
+        Ok(())
     }
 }

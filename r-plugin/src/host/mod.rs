@@ -1,6 +1,8 @@
 use crate::host::contains_point::host_contains_point;
 use crate::host::contains_polygon::host_contains_polygon;
 use crate::host::free_buffer::host_free_buffer;
+use crate::host::get_function_setting::host_get_function_setting;
+use crate::host::get_function_value::host_get_function_value;
 use crate::host::get_value::host_get_value;
 use crate::host::put_polygon::host_put_polygon;
 use crate::host::put_value::host_put_value;
@@ -19,6 +21,8 @@ mod remove_polygon;
 mod contains_polygon;
 mod contains_point;
 mod put_polygon;
+mod get_function_value;
+mod get_function_setting;
 
 pub fn create_api(context: &PluginContext) -> HostApi {
     HostApi {
@@ -30,11 +34,13 @@ pub fn create_api(context: &PluginContext) -> HostApi {
         contains_polygon: host_contains_polygon,
         put_polygon: host_put_polygon,
         remove_polygon: host_remove_polygon,
+        get_function_value: host_get_function_value,
+        get_function_setting: host_get_function_setting,
         free_buffer: host_free_buffer,
     }
 }
 
-pub unsafe fn ctx_key(
+pub unsafe fn ctx_setting_code_key(
     setting_code_ptr: *const u8,
     setting_code_len: usize,
     key_ptr: *const u8,
@@ -58,6 +64,38 @@ pub unsafe fn ctx_key(
     let key = String::from_utf8_lossy(key).into_owned();
 
     (setting_code, key)
+}
+
+pub unsafe fn ctx_setting_code(
+    setting_code_ptr: *const u8,
+    setting_code_len: usize,
+) -> String {
+    let setting_code = unsafe {
+        std::slice::from_raw_parts(
+            setting_code_ptr,
+            setting_code_len,
+        )
+    };
+
+    let setting_code = String::from_utf8_lossy(setting_code).into_owned();
+
+    setting_code
+}
+
+pub unsafe fn ctx_key(
+    key_ptr: *const u8,
+    key_len: usize,
+) -> String {
+    let key = unsafe {
+        std::slice::from_raw_parts(
+            key_ptr,
+            key_len,
+        )
+    };
+
+    let key = String::from_utf8_lossy(key).into_owned();
+
+    key
 }
 
 pub unsafe fn ctx_value(

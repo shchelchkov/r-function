@@ -8,7 +8,7 @@ fn main() {
     let mut buf = Vec::new();
     io::stdin().read_to_end(&mut buf).expect("read stdin");
 
-    let mut v: Value = fun::from_slice(&mut buf);
+    let mut v: Value = fun::from_slice(&buf);
 
     if let Some(values) = v.as_array() {
         for value in values.iter() {

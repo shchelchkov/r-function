@@ -5,6 +5,7 @@ members = [
     "plugin-common",
     "f-test_key",
     "f-directory_value",
+    "f-order_book_bybit",
 ]
 
 [profile.release]

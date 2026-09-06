@@ -1,30 +1,14 @@
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
 
+use super::HostFn;
 use async_trait::async_trait;
 use r_error::runtime::error::RuntimeError;
-use serde::Deserialize;
-use sonic_rs::Value;
-use tokio::sync::mpsc::Sender;
-use r_producer::host::send_pipeline::{SendJob, SendValue};
-use super::HostFn;
-
-
+use r_producer::host::send_pipeline::{Req, SendJob, SendValue};
 
 fn shard_for(key: Option<&[u8]>, shards: usize) -> usize {
     let mut h = std::collections::hash_map::DefaultHasher::new();
     key.hash(&mut h);
     (h.finish() % shards as u64) as usize
-}
-
-#[derive(Deserialize)]
-struct Req {
-    setting_code: String,
-    #[serde(default)]
-    channel: String,
-    #[serde(default)]
-    key: String,
-    value: Vec<Value>, 
 }
 
 #[async_trait]

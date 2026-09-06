@@ -43,9 +43,9 @@ impl Processor {
         }
         for (setting_code, group) in groups {
             let res = self.emit_group(&msgs, &setting_code, &group).await;
-            if res.is_ok() {
-                let res = self.emit_group_plugin(&msgs, &setting_code, &group).await;
-            }
+            // if res.is_ok() {
+            let res = self.emit_group_plugin(&msgs, &setting_code, &group).await;
+            // }
 
             for &idx in &group.idxs {
                 results[idx] = res;

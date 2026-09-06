@@ -1,4 +1,5 @@
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct Buffer {
     pub ptr: *mut u8,
     pub len: usize,

@@ -1,4 +1,4 @@
-use sonic_rs::{JsonContainerTrait, JsonValueTrait, Object, Serialize, Value};
+use sonic_rs::{JsonContainerTrait, JsonValueMutTrait, JsonValueTrait, Object, Serialize, Value};
 
 pub fn to_value(input: &Object) -> Result<Value, sonic_rs::Error> {
     sonic_rs::to_value(&input)
@@ -11,10 +11,23 @@ where
     sonic_rs::to_vec(&value).expect("serialize")
 }
 
-pub fn from_slice(buf: &mut Vec<u8>) -> Value {
+pub fn from_slice(buf: &[u8]) -> Value {
     sonic_rs::from_slice(&buf).expect("parse json")
 }
 
+pub fn from_value(value: &Value) -> Vec<Value> {
+    sonic_rs::from_value(&value).unwrap_or_default()
+}
+
+pub fn to_string(obj: &Object) -> String {
+    sonic_rs::to_string(obj).unwrap_or_default()
+}
+
+
+pub fn to_obj(cached_value: &mut Value) -> &mut Object {
+    let mut envelope = cached_value.as_object_mut().unwrap();
+    envelope
+}
 
 pub fn f_target_key<'s>(
     obj: &Object,

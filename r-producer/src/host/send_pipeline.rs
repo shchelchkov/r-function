@@ -2,13 +2,26 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
+use crate::kafka::producer::{Enqueued, Producer};
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 use rdkafka::producer::DeliveryFuture;
+use sonic_rs::{Value};
 use tokio::sync::mpsc::{self, Sender};
 use tokio::task::AbortHandle;
 use tracing::{info, warn};
-use crate::kafka::producer::{Enqueued, Producer};
+use serde::Deserialize;
+
+
+#[derive(Deserialize)]
+pub struct Req {
+    pub setting_code: String,
+    #[serde(default)]
+    pub channel: String,
+    #[serde(default)]
+    pub key: String,
+    pub value: Vec<Value>,
+}
 
 #[derive(Clone, Debug)]
 pub struct SendJob {
