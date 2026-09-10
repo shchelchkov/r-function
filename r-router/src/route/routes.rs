@@ -12,6 +12,8 @@ use axum::{
     Router,
     routing::{get, post},
 };
+use r_setting::{catalogs, consumers, streams};
+use crate::route::{catalog, consumer, functions, stream};
 
 pub fn build_router(state: AppState, prefix_functions: &str, prefix_directory: &str) -> Router {
     Router::new()
@@ -50,6 +52,11 @@ fn setting_routes() -> Router<AppState> {
         .route("/streams/{setting_code}", get(get_stream_setting))
         .route("/catalog/{setting_code}", get(get_catalog_setting))
         .route("/consumer/{setting_code}", get(get_consumer_setting))
+        
+        .route("/functions", get(functions::get_values))
+        .route("/catalogs", get(catalog::get_values))
+        .route("/consumers", get(consumer::get_values))
+        .route("/streams", get(stream::get_values))
 
         .route("/plugin/cache/{setting_code}", get(get_plugin_cache))
         .route("/plugin/resolve/{setting_code}", get(get_plugin_resolve_cache))

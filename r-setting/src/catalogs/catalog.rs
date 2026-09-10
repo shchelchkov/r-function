@@ -5,6 +5,7 @@ use std::sync::Arc;
 use crate::catalogs::catalog_setting::CatalogSetting;
 use crate::git::setting_store::SettingStore;
 use crate::git::{GitHandle, HeadObserver, fetch_setting};
+use crate::streams::stream_setting::StreamSetting;
 
 #[derive(Clone)]
 pub struct Catalog {
@@ -29,6 +30,11 @@ impl Catalog {
     pub fn set_catalog_setting(&self, setting_code: &str, catalog_settings: Vec<CatalogSetting>) {
         self.settings.set(setting_code, catalog_settings);
     }
+
+    pub fn entries(&self) -> Vec<(String, Arc<Vec<CatalogSetting>>)> {
+        self.settings.entries()
+    }
+
 }
 
 impl HeadObserver for Catalog {

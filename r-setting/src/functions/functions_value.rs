@@ -7,6 +7,7 @@ use tracing::info;
 use crate::functions::function_setting::FunctionSetting;
 use crate::git::setting_store::SettingStore;
 use crate::git::{GitHandle, HeadObserver, fetch_setting, fetch_setting_value};
+use crate::streams::stream_setting::StreamSetting;
 
 #[derive(Clone)]
 pub struct FunctionValue {
@@ -63,6 +64,11 @@ impl FunctionValue {
             }
         }
     }
+
+    pub fn entries(&self) -> Vec<(String, Arc<Vec<FunctionSetting>>)> {
+        self.shared.settings.entries()
+    }
+    
 }
 
 fn build_schema(settings: &[FunctionSetting]) -> Value {

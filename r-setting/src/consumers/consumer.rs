@@ -1,7 +1,7 @@
 use gix::ObjectId;
 use r_config::config::FunctionConfig;
 use std::sync::Arc;
-
+use crate::catalogs::catalog_setting::CatalogSetting;
 use crate::consumers::consumer_setting::ConsumerSetting;
 use crate::git::setting_store::SettingStore;
 use crate::git::{GitHandle, HeadObserver, fetch_setting};
@@ -33,6 +33,11 @@ impl Consumer {
     ) {
         self.settings.set(setting_code, consumer_settings);
     }
+
+    pub fn entries(&self) -> Vec<(String, Arc<Vec<ConsumerSetting>>)> {
+        self.settings.entries()
+    }
+
 }
 
 impl HeadObserver for Consumer {

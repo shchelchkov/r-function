@@ -29,6 +29,11 @@ impl Stream {
     pub fn set_stream_setting(&self, catalog_setting: &str, stream_settings: Vec<StreamSetting>) {
         self.settings.set(catalog_setting, stream_settings);
     }
+
+    pub fn entries(&self) -> Vec<(String, Arc<Vec<StreamSetting>>)> {
+        self.settings.entries()
+    }
+
 }
 
 impl HeadObserver for Stream {

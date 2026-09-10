@@ -5,6 +5,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use r_setting::consumers::consumer::Consumer;
 use r_setting::consumers::consumer_setting::ConsumerSetting;
+use r_setting::git::SettingEntry;
 use std::sync::Arc;
 
 pub async fn get_consumer_setting(
@@ -31,4 +32,19 @@ pub async fn get_consumer_request(
             .ok_or(StatusCode::NOT_FOUND)?;
 
     Ok(Json(settings))
+}
+
+
+pub async fn get_values(
+    State(values): State<Consumer>,
+) -> Json<ApiResponse<Vec<SettingEntry<ConsumerSetting>>>> {
+    let data = values
+        .entries()
+        .into_iter()
+        .map(|(key, values)| SettingEntry {
+            key: key,
+            values: values,
+        })
+        .collect();
+    Json(ApiResponse { data })
 }

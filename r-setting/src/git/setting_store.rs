@@ -5,6 +5,7 @@ use gix::ObjectId;
 use gix::Repository;
 use r_error::runtime::error::RuntimeError;
 use serde::de::DeserializeOwned;
+use sonic_rs::Value;
 use tracing::{error, info};
 
 use crate::git::GitHandle;
@@ -100,5 +101,15 @@ impl<T: DeserializeOwned + Send + Sync + 'static> SettingStore<T> {
                 self.shared.cache.remove(key);
             }
         }
+    }
+
+
+    pub fn entries(&self) -> Vec<(String, Arc<Vec<T>>)> {
+        self.shared
+            .cache
+            .iter()
+            .map(|e| (e.key().clone(), Arc::clone(e.value()))
+            )
+            .collect()
     }
 }

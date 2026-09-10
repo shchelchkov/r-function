@@ -4,7 +4,9 @@ use axum::http::StatusCode;
 use r_setting::catalogs::catalog::Catalog;
 use r_setting::catalogs::catalog_setting::CatalogSetting;
 use std::sync::Arc;
-
+use r_setting::consumers::consumer::Consumer;
+use r_setting::consumers::consumer_setting::ConsumerSetting;
+use r_setting::git::SettingEntry;
 use crate::route::types::FluxByMapQuery;
 use crate::route::values::ApiResponse;
 
@@ -30,4 +32,18 @@ pub async fn get_catalog_request(
         .ok_or(StatusCode::NOT_FOUND)?;
 
     Ok(Json(settings))
+}
+
+pub async fn get_values(
+    State(values): State<Catalog>,
+) -> Json<ApiResponse<Vec<SettingEntry<CatalogSetting>>>> {
+    let data = values
+        .entries()
+        .into_iter()
+        .map(|(key, values)| SettingEntry {
+            key: key,
+            values: values,
+        })
+        .collect();
+    Json(ApiResponse { data })
 }

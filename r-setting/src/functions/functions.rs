@@ -77,6 +77,11 @@ impl Function {
     ) {
         self.shared.settings.set(catalog_setting, function_settings);
     }
+
+    pub fn entries(&self) -> Vec<(String, Arc<Vec<FunctionSetting>>)> {
+        self.shared.settings.entries()
+    }
+
 }
 
 impl HeadObserver for Function {

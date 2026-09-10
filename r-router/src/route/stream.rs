@@ -1,11 +1,12 @@
+use crate::route::values::ApiResponse;
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use r_setting::streams::stream::Stream;
 use r_setting::streams::stream_setting::StreamSetting;
+use serde::Serialize;
 use std::sync::Arc;
-
-use crate::route::values::ApiResponse;
+use r_setting::git::SettingEntry;
 
 pub async fn get_stream_setting(
     Path(setting_code): Path<String>,
@@ -17,4 +18,18 @@ pub async fn get_stream_setting(
         .ok_or(StatusCode::NOT_FOUND)?;
 
     Ok(Json(ApiResponse { data: settings }))
+}
+
+pub async fn get_values(
+    State(values): State<Stream>,
+) -> Json<ApiResponse<Vec<SettingEntry<StreamSetting>>>> {
+    let data = values
+        .entries()
+        .into_iter()
+        .map(|(key, values)| SettingEntry {
+            key: key,
+            values: values,
+        })
+        .collect();
+    Json(ApiResponse { data })
 }

@@ -9,6 +9,9 @@ use r_setting::functions::functions_value::FunctionValue;
 use sonic_rs::Value;
 use std::sync::Arc;
 use tracing::info;
+use r_setting::git::SettingEntry;
+use r_setting::streams::stream::Stream;
+use r_setting::streams::stream_setting::StreamSetting;
 
 pub async fn get_function_setting(
     Path(setting_code): Path<String>,
@@ -48,4 +51,19 @@ pub async fn get_function_request(
             .ok_or(StatusCode::NOT_FOUND)?;
 
     Ok(Json(settings))
+}
+
+
+pub async fn get_values(
+    State(values): State<Function>,
+) -> Json<ApiResponse<Vec<SettingEntry<FunctionSetting>>>> {
+    let data = values
+        .entries()
+        .into_iter()
+        .map(|(key, values)| SettingEntry {
+            key: key,
+            values: values,
+        })
+        .collect();
+    Json(ApiResponse { data })
 }
