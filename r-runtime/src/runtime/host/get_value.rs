@@ -25,7 +25,9 @@ impl HostFn for GetValue {
     async fn call(&self, input: &[u8]) -> Result<Option<Vec<u8>>, RuntimeError> {
         let req: Req =
             sonic_rs::from_slice(input).map_err(|e| RuntimeError::Decode(e.to_string()))?;
-        match self.values.get_value(&req.setting_code, &req.key) {
+        match self.values.get_value(&req.setting_code, &req.key)
+            .map_err(|e| RuntimeError::Internal(e.to_string()))?
+        {
             Some(v) => {
                 let bytes =
                     sonic_rs::to_vec(&*v).map_err(|e| RuntimeError::Internal(e.to_string()))?;

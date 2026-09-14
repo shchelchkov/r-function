@@ -5,5 +5,10 @@ edition = "2024"
 
 [dependencies]
 dashmap = { workspace = true }
+fjall = "3.1.10"
 sonic-rs = { workspace = true }
 tracing = { workspace = true }
+thiserror = "2.0.20"
+axum = "0.8.9"
+http = "1.5.0"
+parking_lot = "0.12.5"

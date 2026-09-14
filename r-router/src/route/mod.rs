@@ -10,3 +10,4 @@ pub mod values;
 pub mod ws;
 pub mod plugin;
 pub mod wasm;
+mod error;

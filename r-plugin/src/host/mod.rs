@@ -1,9 +1,11 @@
+use crate::host::append_value::host_append_value;
 use crate::host::contains_point::host_contains_point;
 use crate::host::contains_polygon::host_contains_polygon;
 use crate::host::free_buffer::host_free_buffer;
 use crate::host::get_function_setting::host_get_function_setting;
 use crate::host::get_function_value::host_get_function_value;
 use crate::host::get_value::host_get_value;
+use crate::host::insert_value::host_insert_value;
 use crate::host::put_polygon::host_put_polygon;
 use crate::host::put_value::host_put_value;
 use crate::host::remove_polygon::host_remove_polygon;
@@ -23,11 +25,15 @@ mod contains_point;
 mod put_polygon;
 mod get_function_value;
 mod get_function_setting;
+mod insert_value;
+mod append_value;
 
 pub fn create_api(context: &PluginContext) -> HostApi {
     HostApi {
         ctx: context as *const PluginContext as *mut c_void,
         put_value: host_put_value,
+        insert_value: host_insert_value,
+        append_value: host_append_value,
         get_value: host_get_value,
         send_value: host_send_value,
         contains_point: host_contains_point,
@@ -114,4 +120,19 @@ pub unsafe fn ctx_value(
             .expect("invalid JSON value");
 
     value
+}
+
+pub unsafe fn ctx_u64(
+    value_ptr: *const u8,
+    value_len: usize,
+) -> Option<u64> {
+    if value_ptr.is_null() || value_len != 8 {
+        return None;
+    }
+
+    let bytes = unsafe {
+        std::slice::from_raw_parts(value_ptr, 8)
+    };
+
+    Some(u64::from_le_bytes(bytes.try_into().unwrap()))
 }

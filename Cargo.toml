@@ -15,6 +15,7 @@ members = [
     "r-setting",
     "r-value",
     "r-tree",
+    "r-db",
     "r-runtime-api",
     "r-runtime",
     "r-plugin-api",

@@ -1,19 +1,19 @@
-use crate::plugin::{PluginContext, SendValue};
 use crate::plugin::executor::PluginExecutor;
 use crate::plugin::loader::PluginLoader;
 use crate::plugin::plugin_repository::PluginRepository;
+use crate::plugin::{PluginContext, SendValue};
 use async_trait::async_trait;
+use r_error::runtime::error::RuntimeError;
 use r_plugin_api::{Plugin, PluginError};
+use r_producer::host::send_pipeline::SendPipeline;
 use r_producer::kafka::producer::Producer;
 use r_setting::functions::functions::Function;
 use r_setting::functions::functions_value::FunctionValue;
 use r_setting::git::HeadObserver;
 use r_setting::streams::stream::Stream;
+use r_tree::value::polygon::Polygon;
 use r_value::value::value::Values;
 use std::sync::Arc;
-use r_error::runtime::error::RuntimeError;
-use r_producer::host::send_pipeline::SendPipeline;
-use r_tree::value::polygon::Polygon;
 
 pub struct PluginModule {
     shared: Arc<Shared>,

@@ -1,6 +1,9 @@
-use axum::Json;
-use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use crate::route::error::ApiError;
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+};
 use r_value::value::value::Values;
 use serde::Serialize;
 use sonic_rs::Value;
@@ -21,45 +24,56 @@ pub struct ValueEntry {
 pub async fn get_values(
     Path(setting_code): Path<String>,
     State(values): State<Values>,
-) -> Json<ApiResponse<Vec<ValueEntry>>> {
+) -> Result<Json<ApiResponse<Vec<ValueEntry>>>, ApiError> {
     info!("get_values: {setting_code}");
+
     let data = values
-        .entries()
+        .entries()?
         .into_iter()
         .map(|(key, values)| ValueEntry { key, values })
         .collect();
-    Json(ApiResponse { data })
+
+    Ok(Json(ApiResponse { data }))
 }
 
 pub async fn get_value(
     Path((setting_code, key)): Path<(String, String)>,
     State(values): State<Values>,
-) -> Result<Json<ApiResponse<Arc<Vec<Value>>>>, StatusCode> {
+) -> Result<Json<ApiResponse<Arc<Vec<Value>>>>, ApiError> {
     info!("get_value: {setting_code}.{key}");
-    values
-        .get_value(&setting_code, &key)
-        .map(|data| Json(ApiResponse { data }))
-        .ok_or(StatusCode::NOT_FOUND)
+
+    let data = values
+        .get_value(&setting_code, &key)?
+        .ok_or(ApiError::NotFound)?;
+
+    Ok(Json(ApiResponse { data }))
 }
 
 pub async fn put_value(
     Path((setting_code, key)): Path<(String, String)>,
     State(values): State<Values>,
     Json(payload): Json<Value>,
-) -> StatusCode {
-    info!("put_value: {setting_code}");
-    values.put_value(&setting_code, Arc::from(key.as_str()), payload);
-    StatusCode::NO_CONTENT
+) -> Result<StatusCode, ApiError> {
+    info!("put_value: {setting_code}.{key}");
+
+    values.put_value(
+        &setting_code,
+        Arc::from(key.as_str()),
+        payload,
+    )?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn delete_value(
     Path((setting_code, key)): Path<(String, String)>,
     State(values): State<Values>,
-) -> StatusCode {
-    info!("delete_value: {setting_code}");
-    if values.remove_value(&setting_code, &key) {
-        StatusCode::NO_CONTENT
+) -> Result<StatusCode, ApiError> {
+    info!("delete_value: {setting_code}.{key}");
+
+    if values.remove_value(&setting_code, &key)? {
+        Ok(StatusCode::NO_CONTENT)
     } else {
-        StatusCode::NOT_FOUND
+        Ok(StatusCode::NOT_FOUND)
     }
 }

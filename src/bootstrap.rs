@@ -60,7 +60,7 @@ pub async fn build(cfg: &AppConfig) -> Result<Components, Box<dyn Error>> {
     let loader = GitModuleLoader::new(git.clone(), &cfg.function_config);
     let max_instances = cfg.pipeline.concurrency as u32 + watchdog_slots + 2;
 
-    let values = Values::new();
+    let values = Values::new(&cfg.values.path, cfg.values.limit)?;
     let polygon = Polygon::new();
     let runtime = Arc::new(
         WasmRuntime::new(

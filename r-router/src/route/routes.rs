@@ -8,12 +8,11 @@ use crate::route::stream::get_stream_setting;
 use crate::route::values::{delete_value, get_value, get_values, put_value};
 use crate::route::wasm::{get_module_cache, get_module_resolve_cache};
 use crate::route::ws::ws_handler;
+use crate::route::{catalog, consumer, functions, stream};
 use axum::{
     Router,
     routing::{get, post},
 };
-use r_setting::{catalogs, consumers, streams};
-use crate::route::{catalog, consumer, functions, stream};
 
 pub fn build_router(state: AppState, prefix_functions: &str, prefix_directory: &str) -> Router {
     Router::new()
@@ -63,3 +62,4 @@ fn setting_routes() -> Router<AppState> {
         .route("/module/cache/{setting_code}", get(get_module_cache))
         .route("/module/resolve/{setting_code}", get(get_module_resolve_cache))
 }
+

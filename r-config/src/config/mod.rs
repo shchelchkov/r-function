@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AppConfig {
     pub tokio: TokioConfig,
+    pub values: ValuesConfig,
     pub function_config: FunctionConfig,
     pub kafka_consumer: KafkaConfig,
     pub kafka_producer: KafkaConfig,
@@ -72,8 +73,30 @@ pub struct TokioConfig {
     pub worker_threads: Option<usize>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ValuesConfig {
+    #[serde(default = "default_path")]
+    pub path: String,
+    #[serde(default = "default_limit")]
+    pub limit: usize,
+    #[serde(default = "default_history")]
+    pub history: usize,
+}
+
 fn default_function_prefix() -> String {
     "/api/functions".to_string()
+}
+
+fn default_path() -> String {
+    "/data/values".to_string()
+}
+
+fn default_limit() -> usize {
+    100
+}
+
+fn default_history() -> usize {
+    1000
 }
 
 fn default_directory_prefix() -> String {

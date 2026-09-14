@@ -23,23 +23,16 @@ pub unsafe extern "C" fn host_get_value(
             key_len,
         )
     };
-    
-    let mut json = match ctx.values.get_value(
-        &setting_code,
-        &key,
-    ) {
-        Some(value) => {
-            sonic_rs::to_vec(value.as_ref())
-                .expect("serialize value")
-        }
 
-        None => {
-            return Buffer {
-                ptr: std::ptr::null_mut(),
-                len: 0,
-                capacity: 0,
-            };
-        }
+    let mut json = match ctx.values.get_value(&setting_code, &key) {
+        Ok(Some(v)) => match sonic_rs::to_vec(&*v) {
+            Ok(json) => json,
+            Err(_) => return Buffer::empty(),
+        },
+
+        Ok(None) => return Buffer::empty(),
+
+        Err(_) => return Buffer::empty(),
     };
 
     let buffer = Buffer {

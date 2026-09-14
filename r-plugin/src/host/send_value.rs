@@ -41,34 +41,33 @@ pub unsafe extern "C" fn host_send_value(
         return Buffer::empty();
     };
 
-    let Some(setting_code) = (unsafe {
-        slice_from_raw_parts(
-            setting_code_ptr,
-            setting_code_len,
-        )
-    }) else {
-        return Buffer::empty();
-    };
+    // let Some(setting_code) = (unsafe {
+    //     slice_from_raw_parts(
+    //         setting_code_ptr,
+    //         setting_code_len,
+    //     )
+    // }) else {
+    //     return Buffer::empty();
+    // };
+    //
+    // let Some(key) = (unsafe {
+    //     slice_from_raw_parts(
+    //         key_ptr,
+    //         key_len,
+    //     )
+    // }) else {
+    //     return Buffer::empty();
+    // };
+    //
+    // let Some(channel) = (unsafe {
+    //     slice_from_raw_parts(
+    //         channel_ptr,
+    //         channel_len,
+    //     )
+    // }) else {
+    //     return Buffer::empty();
+    // };
 
-    let Some(key) = (unsafe {
-        slice_from_raw_parts(
-            key_ptr,
-            key_len,
-        )
-    }) else {
-        return Buffer::empty();
-    };
-
-    let Some(channel) = (unsafe {
-        slice_from_raw_parts(
-            channel_ptr,
-            channel_len,
-        )
-    }) else {
-        return Buffer::empty();
-    };
-
-    let setting_code = setting_code.to_vec();
     let payload = payload.to_vec();
 
     let state = &ctx.send_value;

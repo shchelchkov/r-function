@@ -1,5 +1,5 @@
 use crate::{Buffer, PluginError};
-use sonic_rs::{JsonContainerTrait, JsonValueTrait, Object, Value};
+use sonic_rs::{JsonValueTrait, Object, Value};
 use std::ffi::c_void;
 
 unsafe impl Send for HostApi {}
@@ -17,6 +17,35 @@ pub struct HostApi {
 
         key_ptr: *const u8,
         key_len: usize,
+
+        value_ptr: *const u8,
+        value_len: usize,
+    ),
+
+    pub insert_value: unsafe extern "C" fn(
+        ctx: *mut c_void,
+
+        setting_code_ptr: *const u8,
+        setting_code_len: usize,
+
+        key_ptr: *const u8,
+        key_len: usize,
+
+        value_ptr: *const u8,
+        value_len: usize,
+    ),
+
+    pub append_value: unsafe extern "C" fn(
+        ctx: *mut c_void,
+
+        setting_code_ptr: *const u8,
+        setting_code_len: usize,
+
+        key_ptr: *const u8,
+        key_len: usize,
+
+        timestamp_ptr: *const u8,
+        timestamp_len: usize,
 
         value_ptr: *const u8,
         value_len: usize,
@@ -122,6 +151,7 @@ pub struct HostApi {
     pub free_buffer: unsafe extern "C" fn(
         buffer: Buffer,
     ),
+
 }
 
 
@@ -145,6 +175,58 @@ impl HostApi {
                 key.as_ptr(),
                 key.len(),
 
+                bytes.as_ptr(),
+                bytes.len(),
+            );
+        }
+
+        Ok(())
+    }
+
+    pub fn insert_value(
+        &self,
+        setting_code: &str,
+        key: &str,
+        value: &Value,
+    ) -> Result<(), sonic_rs::Error> {
+        let bytes = sonic_rs::to_vec(value)?;
+
+        unsafe {
+            (self.insert_value)(
+                self.ctx,
+
+                setting_code.as_ptr(),
+                setting_code.len(),
+
+                key.as_ptr(),
+                key.len(),
+
+                bytes.as_ptr(),
+                bytes.len(),
+            );
+        }
+
+        Ok(())
+    }
+
+    pub fn append_value(
+        &self,
+        setting_code: &str,
+        key: &str,
+        timestamp: &str,
+        value: &Value,
+    ) -> Result<(), sonic_rs::Error> {
+        let bytes = sonic_rs::to_vec(value)?;
+
+        unsafe {
+            (self.append_value)(
+                self.ctx,
+                setting_code.as_ptr(),
+                setting_code.len(),
+                key.as_ptr(),
+                key.len(),
+                timestamp.as_ptr(),
+                timestamp.len(),
                 bytes.as_ptr(),
                 bytes.len(),
             );
