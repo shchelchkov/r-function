@@ -4,7 +4,7 @@ mod tests {
     use r_error::plugin::error::PluginError;
     use r_error::runtime::error::RuntimeError;
     use r_plugin_api::Plugin;
-    use r_process::process::{Message, MessagePublisher, Processor, SettingProvider};
+    use r_process::process::{Message, MessagePublisher, Processor, Resolver, SettingProvider};
     use r_producer::kafka::producer::{DlqContext, KafkaSendError};
     use r_runtime_api::Runtime;
     use r_setting::functions::function_setting::FunctionSetting;
@@ -117,7 +117,8 @@ mod tests {
             out: br#"[{"r":1}]"#.to_vec(),
         });
 
-        let processor = Processor::new(publisher.clone(), provider, runtime, plugin);
+        let resolver = Arc::new(Resolver::new(provider));
+        let processor = Processor::new(publisher.clone(), resolver, runtime, plugin);
 
         let msg = Message::new(
             "src".into(),
@@ -146,6 +147,33 @@ mod tests {
         );
     }
 
+    fn topic_resolver() -> Resolver {
+        Resolver::new(Arc::new(MockProvider {
+            settings: Arc::new(vec![]),
+            value_key: Arc::new(vec!["topic".to_string()]),
+        }))
+    }
+
+    #[test]
+    fn resolve_value_builds_key_from_value_key() {
+        let v = block_on(topic_resolver().resolve_value(br#"{"setting_code":"sc","topic":"t1"}"#))
+            .expect("resolved");
+
+        assert_eq!(&*v.key, "t1", "key = value of the value_key field");
+        assert_eq!(&*v.setting_code, "sc");
+        assert_eq!(v.value_key, vec!["topic".to_string()]);
+    }
+
+    #[test]
+    fn resolve_value_is_none_without_setting_code_or_for_invalid_json() {
+        let resolver = topic_resolver();
+        assert!(block_on(resolver.resolve_value(br#"{"topic":"t1"}"#)).is_none());
+        assert!(
+            block_on(resolver.resolve_value(br#"{"setting_code":"sc","topic":"t1",}"#)).is_none(),
+            "invalid JSON is left to the worker's raw path (poison -> DLQ)"
+        );
+    }
+
     #[test]
     fn handle_batch_routes_poison_to_dlq() {
         let publisher = Arc::new(MockPublisher::default());
@@ -157,7 +185,8 @@ mod tests {
         });
         let runtime: Arc<dyn Runtime> = Arc::new(MockRuntime { out: vec![] });
         let plugin: Arc<dyn Plugin> = Arc::new(MockPlugin { out: vec![] });
-        let processor = Processor::new(publisher.clone(), provider, runtime, plugin);
+        let resolver = Arc::new(Resolver::new(provider));
+        let processor = Processor::new(publisher.clone(), resolver, runtime, plugin);
 
         let msg = Message::new(
             "src".into(),

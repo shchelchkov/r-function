@@ -330,3 +330,85 @@ fn serialize_with_setting_code(obj: &Value, code: &str) -> Result<Vec<u8>, Kafka
         .insert("setting_code", code);
     serialize_object(&o)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{grid_positions, parse_objects, serialize_with_setting_code};
+    use sonic_rs::JsonValueTrait;
+
+    #[test]
+    fn grid_positions_yields_full_grid_in_order() {
+        let pos: Vec<(usize, usize)> = grid_positions(2, 3, 0).collect();
+        assert_eq!(pos, [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)]);
+    }
+
+    #[test]
+    fn grid_positions_resumes_from_flat_offset() {
+        let pos: Vec<(usize, usize)> = grid_positions(2, 3, 4).collect();
+        assert_eq!(pos, [(1, 1), (1, 2)]);
+    }
+
+    #[test]
+    fn grid_positions_empty_when_no_objects_or_routes() {
+        assert_eq!(grid_positions(0, 3, 0).count(), 0);
+        assert_eq!(grid_positions(2, 0, 0).count(), 0);
+    }
+
+    #[test]
+    fn grid_positions_from_at_or_past_end_yields_nothing() {
+        assert_eq!(grid_positions(2, 3, 6).count(), 0);
+        assert_eq!(grid_positions(2, 3, 99).count(), 0);
+    }
+
+    #[test]
+    fn array_yields_one_object_per_element() {
+        let input = br#"[{"a":1},{"a":2},{"a":3}]"#;
+        let out = parse_objects(input).expect("valid json");
+        assert_eq!(out.len(), 3);
+        for v in &out {
+            assert!(v.is_object());
+        }
+    }
+
+    #[test]
+    fn single_object_yields_one_value() {
+        let out = parse_objects(br#"{"a":1}"#).expect("valid json");
+        assert_eq!(out.len(), 1);
+    }
+
+    #[test]
+    fn empty_array_yields_no_values() {
+        let out = parse_objects(b"[]").expect("valid json");
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn non_object_array_elements_are_skipped() {
+        let out = parse_objects(br#"[{"a":1}, 42, "x", {"b":2}]"#).expect("valid json");
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn malformed_json_is_error() {
+        assert!(parse_objects(b"{not json").is_err());
+        assert!(parse_objects(b"").is_err());
+    }
+
+    #[test]
+    fn rewrite_replaces_existing_setting_code() {
+        let obj = &parse_objects(br#"{"setting_code":"old","x":1}"#).unwrap()[0];
+        let bytes = serialize_with_setting_code(obj, "new").unwrap();
+        let v: sonic_rs::Value = sonic_rs::from_slice(&bytes).unwrap();
+        assert_eq!(v.get("setting_code").as_str(), Some("new"));
+        assert_eq!(v.get("x").as_i64(), Some(1));
+        assert_eq!(obj.get("setting_code").as_str(), Some("old"));
+    }
+
+    #[test]
+    fn rewrite_adds_setting_code_when_absent() {
+        let obj = &parse_objects(br#"{"x":1}"#).unwrap()[0];
+        let bytes = serialize_with_setting_code(obj, "new").unwrap();
+        let v: sonic_rs::Value = sonic_rs::from_slice(&bytes).unwrap();
+        assert_eq!(v.get("setting_code").as_str(), Some("new"));
+    }
+}

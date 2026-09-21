@@ -21,6 +21,7 @@ members = [
     "r-plugin-api",
     "r-plugin",
     "r-watchdog",
+    "value-rs",
 ]
 exclude = ["functions"]
 

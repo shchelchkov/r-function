@@ -2,12 +2,13 @@ use std::sync::Arc;
 
 use sonic_rs::{JsonValueTrait, Value};
 
+use crate::error::ValueRsError;
+
+pub type Result<T> = std::result::Result<T, ValueRsError>;
+
 const SEPARATOR: &str = "|";
 
-pub fn parse_and_build_key(
-    raw: &[u8],
-    value_key: &[String],
-) -> Result<Option<(Value, Arc<str>)>, sonic_rs::Error> {
+pub fn parse_and_build_key(raw: &[u8], value_key: &[String]) -> Result<Option<(Value, Arc<str>)>> {
     let value: Value = sonic_rs::from_slice(raw)?;
     Ok(build_key(&value, value_key).map(|key| (value, key)))
 }

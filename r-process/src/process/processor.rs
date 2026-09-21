@@ -1,9 +1,8 @@
 use crate::process::Message;
 use crate::process::chain;
 use crate::process::grouping::{Group, Grouped, group_messages};
-use crate::process::provider::SettingProvider;
 use crate::process::publisher::MessagePublisher;
-use crate::process::resolver;
+use crate::process::resolver::Resolver;
 use r_error::process::error::ProcessError;
 use r_plugin_api::Plugin;
 use r_producer::kafka::producer::DlqContext;
@@ -11,34 +10,34 @@ use r_runtime_api::Runtime;
 use std::sync::Arc;
 
 pub struct Processor {
-    producer: Arc<dyn MessagePublisher>,
-    function: Arc<dyn SettingProvider>,
-    runtime: Arc<dyn Runtime>,
-    plugin: Arc<dyn Plugin>,
+    pub producer: Arc<dyn MessagePublisher>,
+    pub resolver: Arc<Resolver>,
+    pub runtime: Arc<dyn Runtime>,
+    pub plugin: Arc<dyn Plugin>,
 }
 
 impl Processor {
     pub fn new(
         producer: Arc<dyn MessagePublisher>,
-        function: Arc<dyn SettingProvider>,
+        resolver: Arc<Resolver>,
         runtime: Arc<dyn Runtime>,
         plugin: Arc<dyn Plugin>,
     ) -> Self {
         Self {
             producer,
-            function,
+            resolver,
             runtime,
             plugin,
         }
     }
 
-    pub async fn handle_batch(&self, msgs: Vec<Message>) -> Vec<Result<(), ()>> {
-        let resolved = resolver::resolve_all(&self.function, &msgs).await;
+    pub async fn handle_batch(&self, mut msgs: Vec<Message>) -> Vec<Result<(), ()>> {
+        let resolved = self.resolver.resolve_all(&msgs).await;
         let Grouped {
             mut results,
             groups,
             poison,
-        } = group_messages(&msgs, &resolved);
+        } = group_messages(&mut msgs, &resolved);
         for (idx, reason) in poison {
             if let Err(e) = self.route_dlq(&msgs[idx], &reason).await {
                 tracing::error!(error = %e,message_index = idx,"failed to route poison message to DLQ");
@@ -127,6 +126,7 @@ impl Processor {
             }
         }
     }
+
     async fn route_group_dlq(
         &self,
         msgs: &[Message],
@@ -145,7 +145,7 @@ impl Processor {
     }
 
     async fn route_dlq(&self, msg: &Message, reason: &str) -> Result<(), ProcessError> {
-        let Some(raw) = msg.payload.as_deref() else {
+        let Some(raw) = msg.raw.as_deref() else {
             return Ok(());
         };
 

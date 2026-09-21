@@ -1,8 +1,11 @@
+use crate::kafka::convert::into_inbound;
+use crate::kafka::offset::Tracker;
+use crate::kafka::stats::StatsContext;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 use r_config::config::KafkaConfig;
 use r_error::kafka::KafkaError;
-use r_process::process::Message;
+use r_process::process::{Message, Resolver};
 use rdkafka::consumer::{CommitMode, Consumer as _, StreamConsumer};
 use rdkafka::error::{KafkaError as RdKafkaError, RDKafkaErrorCode};
 use rdkafka::{ClientConfig, Offset, TopicPartitionList};
@@ -11,21 +14,18 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error};
 
-use crate::kafka::convert::into_inbound;
-use crate::kafka::offset::Tracker;
-use crate::kafka::stats::StatsContext;
-
 pub struct Work {
     pub msg: Message,
     pub ack: oneshot::Sender<Result<(), ()>>,
 }
 
 pub struct Consumer {
+    resolver: Arc<Resolver>,
     consumer: StreamConsumer<StatsContext>,
 }
 
 impl Consumer {
-    pub fn new(cfg: &KafkaConfig) -> Result<Self, KafkaError> {
+    pub fn new(cfg: &KafkaConfig, resolver: Arc<Resolver>) -> Result<Self, KafkaError> {
         let mut client = ClientConfig::new();
         client
             .set("bootstrap.servers", &cfg.bootstrap_servers)
@@ -51,7 +51,7 @@ impl Consumer {
                 .map_err(|e| KafkaError::Subscribe(e.to_string()))?;
         }
 
-        Ok(Self { consumer })
+        Ok(Self { resolver, consumer })
     }
 
     pub async fn run<S>(
@@ -85,10 +85,15 @@ impl Consumer {
                 }
                 res = stream.next() => {
                     let Some(res) = res else { break; };
-                    let inbound = match res {
+                    let mut inbound = match res {
                         Ok(b) => into_inbound(&b),
                         Err(e) => { error!(%e); continue; }
                     };
+
+                    if let Some(raw) = inbound.raw.as_deref() {
+                        inbound.payload = self.resolver.resolve_value(raw).await.map(|v| vec![v]);
+                    }
+
                     let topic = inbound.topic().to_string();
                     let partition = inbound.partition();
                     let offset = inbound.offset();

@@ -10,7 +10,7 @@ use r_consumer::functions::functions::functions_value::FunctionValue;
 use r_consumer::functions::git::{GitHandle, HeadObserver, git_sync};
 use r_consumer::functions::streams::stream::Stream;
 use r_consumer::kafka::Consumer;
-use r_consumer::process::process::Processor;
+use r_consumer::process::process::{Processor, Resolver};
 use r_consumer::process::producer::kafka::producer::Producer;
 use r_db::db::db::{Database, DatabaseOptions};
 use r_feed::FeedHub;
@@ -40,8 +40,6 @@ pub struct Components {
 }
 
 pub async fn build(cfg: &AppConfig) -> Result<Components, Box<dyn Error>> {
-    let consumer = Consumer::new(&cfg.kafka_consumer)?;
-
     let git: Arc<GitHandle> = tokio::task::spawn_blocking({
         let function_config = cfg.function_config.clone();
         move || git_sync(&function_config)
@@ -55,7 +53,11 @@ pub async fn build(cfg: &AppConfig) -> Result<Components, Box<dyn Error>> {
     let consumer_setting = SettingConsumer::new(git.clone(), &cfg.function_config);
     let stream = Stream::new(git.clone(), &cfg.function_config);
     let feed = FeedHub::new();
+
+    let resolver = Resolver::new(Arc::new(function.clone()));
+    let consumer = Consumer::new(&cfg.kafka_consumer, Arc::new(resolver.clone()))?;
     let producer = Producer::new(&cfg.kafka_producer, stream.clone())?.with_feed(feed.clone());
+
     let watchdog_slots = u32::from(cfg.watchdog.is_some());
 
     let head = **git.head.load();
@@ -103,7 +105,7 @@ pub async fn build(cfg: &AppConfig) -> Result<Components, Box<dyn Error>> {
 
     let processor = Arc::new(Processor::new(
         Arc::new(producer),
-        Arc::new(function.clone()),
+        Arc::new(resolver),
         runtime.clone(),
         plugin_module.clone(),
     ));

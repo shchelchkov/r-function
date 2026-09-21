@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 
+use value_rs::Value;
+
 #[derive(Debug)]
 pub struct Message {
     pub topic: String,
     pub partition: i32,
     pub offset: i64,
     pub key: Option<Vec<u8>>,
-    pub payload: Option<Vec<u8>>,
+    pub raw: Option<Vec<u8>>,
+    pub payload: Option<Vec<Value>>,
     pub headers: HashMap<String, Vec<u8>>,
     pub timestamp: Option<i64>,
 }
@@ -17,7 +20,7 @@ impl Message {
         partition: i32,
         offset: i64,
         key: Option<Vec<u8>>,
-        payload: Option<Vec<u8>>,
+        raw: Option<Vec<u8>>,
         headers: HashMap<String, Vec<u8>>,
         timestamp: Option<i64>,
     ) -> Self {
@@ -26,7 +29,8 @@ impl Message {
             partition,
             offset,
             key,
-            payload,
+            raw,
+            payload: None,
             headers,
             timestamp,
         }
