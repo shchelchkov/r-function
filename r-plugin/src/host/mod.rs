@@ -1,6 +1,7 @@
 use crate::host::append_value::host_append_value;
 use crate::host::contains_point::host_contains_point;
 use crate::host::contains_polygon::host_contains_polygon;
+use crate::host::db::{host_db_get_history, host_db_get_value, host_db_remove_value};
 use crate::host::free_buffer::host_free_buffer;
 use crate::host::get_function_setting::host_get_function_setting;
 use crate::host::get_function_value::host_get_function_value;
@@ -18,6 +19,7 @@ use std::ffi::c_void;
 mod append_value;
 mod contains_point;
 mod contains_polygon;
+mod db;
 mod free_buffer;
 mod get_function_setting;
 mod get_function_value;
@@ -43,6 +45,9 @@ pub fn create_api(context: &PluginContext) -> HostApi {
         get_function_value: host_get_function_value,
         get_function_setting: host_get_function_setting,
         free_buffer: host_free_buffer,
+        db_get_value: host_db_get_value,
+        db_get_history: host_db_get_history,
+        db_remove_value: host_db_remove_value,
     }
 }
 

@@ -17,6 +17,7 @@ impl Catalog {
             settings: SettingStore::new(
                 git,
                 function_config.git_catalog_setting.clone(),
+                function_config.def_setting_code.clone(),
                 "catalog setting",
             ),
         }

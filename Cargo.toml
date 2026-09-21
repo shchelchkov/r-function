@@ -49,6 +49,7 @@ r-plugin-api = { version = "0.1.0", path = "r-plugin-api" }
 r-router = { version = "0.1.0", path = "r-router" }
 r-feed = { version = "0.1.0", path = "r-feed" }
 r-value = { version = "0.1.0", path = "r-value" }
+r-db = { version = "0.1.0", path = "r-db" }
 r-tree = { version = "0.1.0", path = "r-tree" }
 r-watchdog = { version = "0.1.0", path = "r-watchdog" }
 r-setting = { version = "0.1.0", path = "r-setting" }
@@ -58,7 +59,6 @@ axum = "0.8.8"
 futures = { workspace = true }
 tower = "0.5.3"
 
-rdkafka = { workspace = true }
 indexmap = "2.14.0"
 rayon = "1.11.0"
 

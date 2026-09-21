@@ -9,3 +9,4 @@ path = "src/lib.rs"
 
 [dependencies]
 sonic-rs = "0.5"
+uuid = { version = "1.26.1", features = ["v4"] }

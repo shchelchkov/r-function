@@ -1,7 +1,6 @@
 use crate::host::{ctx_setting_code_key, ctx_u64, ctx_value};
 use crate::plugin::PluginContext;
 use std::ffi::c_void;
-use std::sync::Arc;
 
 pub unsafe extern "C" fn host_append_value(
     ctx: *mut c_void,
@@ -37,10 +36,7 @@ pub unsafe extern "C" fn host_append_value(
         return;
     };
 
-    if let Err(error) = ctx
-        .db
-        .append_value(&setting_code, Arc::from(key), timestamp, value)
-    {
+    if let Err(error) = ctx.db.append_value(&setting_code, &key, timestamp, value) {
         tracing::error!(%error, %setting_code, "plugin append_value failed");
     }
 }

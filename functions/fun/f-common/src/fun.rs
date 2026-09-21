@@ -1,4 +1,5 @@
 use sonic_rs::{JsonContainerTrait, JsonValueMutTrait, JsonValueTrait, Object, Serialize, Value};
+use uuid::Uuid;
 
 pub fn to_value(input: &Object) -> Result<Value, sonic_rs::Error> {
     sonic_rs::to_value(&input)
@@ -23,6 +24,15 @@ pub fn to_string(obj: &Object) -> String {
     sonic_rs::to_string(obj).unwrap_or_default()
 }
 
+pub fn is_blank(s: &str) -> bool {
+    s.trim().is_empty()
+
+}
+
+pub fn uuid(_s: &str) -> String {
+    let k = Uuid::new_v4().to_string();
+    return k
+}
 
 pub fn to_obj(cached_value: &mut Value) -> &mut Object {
     let mut envelope = cached_value.as_object_mut().unwrap();

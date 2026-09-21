@@ -31,8 +31,21 @@ pub fn build_router(
 
 fn api_db() -> Router<AppState> {
     Router::new()
-        .route("/db", get(db::get_values))
-        .route("/db/{setting_code}", get(db::get_values_by_setting_code))
+        .route("/db/registry", get(db::get_registry))
+        .route(
+            "/db/registry/{setting_code}",
+            get(db::get_registry_by_setting_code),
+        )
+        .route("/db/values", get(db::get_values))
+        .route(
+            "/db/values/{setting_code}",
+            get(db::get_values_by_setting_code),
+        )
+        .route(
+            "/db/values/{setting_code}/{key}",
+            get(db::get_value).delete(db::delete_value),
+        )
+        .route("/db/history/{setting_code}/{key}", get(db::get_history))
 }
 
 fn api_functions() -> Router<AppState> {

@@ -17,13 +17,16 @@ impl Stream {
             settings: SettingStore::new(
                 git,
                 function_config.git_stream_setting.clone(),
+                function_config.def_setting_code.clone(),
                 "stream setting",
             ),
         }
     }
 
     pub fn get_stream_setting(&self, setting_code: &str) -> Option<Arc<Vec<StreamSetting>>> {
-        self.settings.get_or_load(setting_code, fetch_setting)
+        self.settings
+            .get_or_load(setting_code, fetch_setting)
+            .or_else(|| self.settings.get_or_default(setting_code))
     }
 
     pub fn set_stream_setting(&self, catalog_setting: &str, stream_settings: Vec<StreamSetting>) {

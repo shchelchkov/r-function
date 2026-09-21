@@ -8,6 +8,7 @@ use r_watchdog::Watchdog;
 
 use crate::bootstrap::{self, Components};
 use crate::http;
+use crate::persist;
 use crate::pipeline::Pipeline;
 use crate::shutdown::Shutdown;
 
@@ -46,6 +47,12 @@ pub async fn run(cfg: AppConfig) -> Result<(), Box<dyn Error>> {
 
     let pipeline = Pipeline::spawn(&cfg.pipeline, processor);
 
+    let db_flusher = persist::spawn_flusher(
+        db.clone(),
+        Duration::from_millis(cfg.values.fsync_ms.max(1)),
+        shutdown.subscribe(),
+    );
+
     let consumer_task = tokio::spawn({
         let ingress = pipeline.ingress();
         let max_inflight = cfg.pipeline.ingress_queue;
@@ -68,7 +75,7 @@ pub async fn run(cfg: AppConfig) -> Result<(), Box<dyn Error>> {
         consumer_setting,
         stream,
         values,
-        db,
+        db.clone(),
         polygon,
         feed,
         plugin_module,
@@ -81,6 +88,8 @@ pub async fn run(cfg: AppConfig) -> Result<(), Box<dyn Error>> {
         tracing::error!(error = %e, "consumer task failed");
     }
     pipeline.drain().await;
+    let _ = db_flusher.await;
+    persist::persist_all(&db).await;
     let _ = refresher.await;
     if let Some(task) = watchdog_task {
         let _ = task.await;

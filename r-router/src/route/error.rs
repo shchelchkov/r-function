@@ -7,7 +7,7 @@ pub enum ApiError {
     NotFound,
     Value(ValueError),
     Database(DatabaseError),
-    Internal(String),
+        Internal(String),
 }
 
 impl From<ValueError> for ApiError {
@@ -30,6 +30,10 @@ impl IntoResponse for ApiError {
             Self::Value(err) => {
                 tracing::error!(error = %err, "value error");
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+
+            Self::Database(err @ DatabaseError::InvalidKey(_)) => {
+                (StatusCode::BAD_REQUEST, err.to_string()).into_response()
             }
 
             Self::Database(err) => {

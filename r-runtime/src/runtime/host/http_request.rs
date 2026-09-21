@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use r_error::runtime::error::RuntimeError;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::HostFn;
 
@@ -14,6 +14,12 @@ struct Req {
     url: String,
     body: Option<String>,
     content_type: Option<String>,
+}
+
+#[derive(Serialize)]
+struct Resp {
+    status: u16,
+    body: String,
 }
 
 #[async_trait]
@@ -37,10 +43,17 @@ impl HostFn for HttpRequest {
         }
 
         tracing::debug!(%method, url = %req.url, "http_request");
-        rb.send().await.map_err(|e| {
+        let resp = rb.send().await.map_err(|e| {
             RuntimeError::Internal(format!("http_request {method} {}: {e}", req.url))
         })?;
 
-        Ok(None)
+        let status = resp.status().as_u16();
+        let body = resp.text().await.map_err(|e| {
+            RuntimeError::Internal(format!("http_request {method} {}: read body: {e}", req.url))
+        })?;
+
+        let bytes = sonic_rs::to_vec(&Resp { status, body })
+            .map_err(|e| RuntimeError::Internal(e.to_string()))?;
+        Ok(Some(bytes))
     }
 }

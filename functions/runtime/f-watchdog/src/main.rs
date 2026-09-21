@@ -91,7 +91,7 @@ fn put_ts(setting_code: &str, key: &str, instant: i64) {
     }
 }
 
-fn http(method: &str, url: &str, body: Option<&str>) -> Result<(), i32> {
+fn http(method: &str, url: &str, body: Option<&str>) -> Result<Value, i32> {
     let mut req = Object::with_capacity(4);
     req.insert("method", method);
     req.insert("url", url);
@@ -100,7 +100,10 @@ fn http(method: &str, url: &str, body: Option<&str>) -> Result<(), i32> {
         req.insert("content_type", "application/json");
     }
     let bytes = sonic_rs::to_vec(&req).map_err(|_| -100i32)?;
-    host::http_request(&bytes)
+    match host::http_request(&bytes)? {
+        Some(b) => sonic_rs::from_slice(&b).map_err(|_| -101i32),
+        None => Err(-102),
+    }
 }
 
 fn restart_feed(url: &str, config_code: &str, cfg: &Value) {

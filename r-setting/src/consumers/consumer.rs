@@ -16,6 +16,7 @@ impl Consumer {
             settings: SettingStore::new(
                 git,
                 function_config.git_consumer_setting.clone(),
+                function_config.def_setting_code.clone(),
                 "consumer setting",
             ),
         }

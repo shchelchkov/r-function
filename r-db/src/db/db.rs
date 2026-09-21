@@ -1,226 +1,245 @@
 use crate::db::error::DatabaseError;
-use crate::db::ring_buffer::RingBuffer;
+use crate::db::key;
+use crate::db::registry::Tier;
 use dashmap::DashMap;
-use fjall::{Keyspace, KeyspaceCreateOptions, PersistMode};
+use fjall::{Keyspace, KeyspaceCreateOptions};
 use parking_lot::Mutex;
 use sonic_rs::Value;
-use std::fmt::Write;
-use std::path::Path;
+use std::hash::{BuildHasher, RandomState};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+
+pub use fjall::PersistMode;
 
 pub type Result<T> = std::result::Result<T, DatabaseError>;
 
-pub type DataEntry = (Arc<str>, Arc<Vec<Value>>);
+pub const FORMAT: u32 = 3;
+
+const META_FORMAT: &[u8] = b"format";
+pub(crate) const META_HISTORY_SEQ: &[u8] = b"history_seq";
+
+const STRIPES: usize = 64;
+
+#[derive(Debug, Clone, Copy)]
+pub struct DatabaseOptions {
+        pub limit: usize,
+        pub history: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct DataEntry {
+    pub setting_code: Arc<str>,
+    pub key: Arc<str>,
+    pub values: Arc<Vec<Value>>,
+}
 
 #[derive(Clone)]
 pub struct Database {
-    shared: Arc<Shared>,
+    pub(crate) shared: Arc<Shared>,
 }
 
-// #[derive(Debug)]
-struct Shared {
-    recent: DashMap<Arc<str>, Arc<Mutex<RingBuffer<Value>>>>,
-
-    locks: DashMap<Arc<str>, Arc<Mutex<()>>>,
-
-    limit: usize,
+pub(crate) struct Shared {
+    path: PathBuf,
+    pub(crate) options: DatabaseOptions,
     db: fjall::Database,
-    tree: Keyspace,
-    history: Keyspace,
-    sequence: AtomicU64,
+    pub(crate) values: Keyspace,
+    pub(crate) history: Keyspace,
+    pub(crate) meta: Keyspace,
+        pub(crate) registry: Keyspace,
+    locks: Box<[Mutex<()>]>,
+    hasher: RandomState,
+        pub(crate) sequence: Mutex<crate::db::history::Sequence>,
+        pub(crate) counters: DashMap<Vec<u8>, u32>,
+}
+
+impl std::fmt::Debug for Database {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Database")
+            .field("path", &self.shared.path)
+            .field("options", &self.shared.options)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Shared {
+                pub(crate) fn stripe(&self, raw_key: &[u8]) -> &Mutex<()> {
+        let index = self.hasher.hash_one(raw_key) as usize % self.locks.len();
+        &self.locks[index]
+    }
 }
 
 impl Database {
-    pub fn new<P: AsRef<Path>>(path: P, limit: usize) -> Result<Self> {
-        let db = fjall::Database::builder(path).open()?;
+    pub fn open<P: AsRef<Path>>(path: P, options: DatabaseOptions) -> Result<Self> {
+        let options = DatabaseOptions {
+            limit: options.limit.max(1),
+            history: options.history.max(1),
+        };
 
-        let tree = db.keyspace("values", KeyspaceCreateOptions::default)?;
+        let path = path.as_ref().to_path_buf();
+        let db = fjall::Database::builder(&path).open()?;
+
+        let values = db.keyspace("values", KeyspaceCreateOptions::default)?;
         let history = db.keyspace("history", KeyspaceCreateOptions::default)?;
+        let meta = db.keyspace("meta", KeyspaceCreateOptions::default)?;
+        let registry = db.keyspace("registry", KeyspaceCreateOptions::default)?;
+
+        Self::check_format(&meta, &[&values, &history, &registry])?;
+        let sequence = crate::db::history::Sequence::open(&meta)?;
+
+        let locks = (0..STRIPES)
+            .map(|_| Mutex::new(()))
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
 
         Ok(Self {
             shared: Arc::new(Shared {
-                recent: Default::default(),
-                locks: DashMap::new(),
-                limit,
+                path,
+                options,
                 db,
-                tree,
+                values,
                 history,
-                sequence: AtomicU64::new(0),
+                meta,
+                registry,
+                locks,
+                hasher: RandomState::new(),
+                sequence: Mutex::new(sequence),
+                counters: DashMap::new(),
             }),
         })
     }
 
-    fn make_key(setting_code: &str, key: &str) -> String {
-        format!("{setting_code}.{key}")
+            fn check_format(meta: &Keyspace, data: &[&Keyspace]) -> Result<()> {
+        match meta.get(META_FORMAT)? {
+            Some(raw) => {
+                let found = String::from_utf8_lossy(&raw).into_owned();
+                if found.parse::<u32>().ok() == Some(FORMAT) {
+                    Ok(())
+                } else {
+                    Err(DatabaseError::IncompatibleFormat {
+                        found,
+                        expected: FORMAT,
+                    })
+                }
+            }
+            None if Self::all_empty(data)? => {
+                meta.insert(META_FORMAT, FORMAT.to_string())?;
+                Ok(())
+            }
+            None => Err(DatabaseError::IncompatibleFormat {
+                found: "unmarked (pre-format) data".into(),
+                expected: FORMAT,
+            }),
+        }
     }
 
-    fn history_key(key: &str, timestamp: u64, sequence: u64) -> String {
-        let mut buf = String::with_capacity(key.len() + 1 + 20 + 1 + 20);
-
-        write!(buf, "{key}.{timestamp:020}.{sequence:020}").unwrap();
-
-        buf
+    fn all_empty(keyspaces: &[&Keyspace]) -> Result<bool> {
+        for ks in keyspaces {
+            if !ks.is_empty()? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
-    fn lock_for(&self, key: &str) -> Arc<Mutex<()>> {
-        self.shared
-            .locks
-            .entry(Arc::from(key))
-            .or_insert_with(|| Arc::new(Mutex::new(())))
-            .clone()
+    pub fn options(&self) -> DatabaseOptions {
+        self.shared.options
     }
 
     pub fn get_value(&self, setting_code: &str, key: &str) -> Result<Option<Arc<Vec<Value>>>> {
-        let k = Self::make_key(setting_code, key);
-
-        let lock = self.lock_for(&k);
-        let _guard = lock.lock();
-
-        self.load_value(&k)
+        key::validate(setting_code, key)?;
+        Ok(self.load(&key::value_key(setting_code, key))?.map(Arc::new))
     }
 
-    fn load_value(&self, k: &str) -> Result<Option<Arc<Vec<Value>>>> {
-        let Some(raw) = self.shared.tree.get(k)? else {
+    fn load(&self, raw_key: &[u8]) -> Result<Option<Vec<Value>>> {
+        let Some(raw) = self.shared.values.get(raw_key)? else {
             return Ok(None);
         };
-
-        let value: Vec<Value> = sonic_rs::from_slice(&raw)?;
-        let value = Arc::new(value);
-
-        Ok(Some(value))
+        Ok(Some(sonic_rs::from_slice(&raw)?))
     }
 
-    pub fn insert_value(&self, setting_code: &str, key: Arc<str>, value: Value) -> Result<()> {
-        let k = Self::make_key(setting_code, &key);
-        let lock = self.lock_for(&k);
-        let _guard = lock.lock();
+        pub fn insert_value(&self, setting_code: &str, key: &str, value: Value) -> Result<()> {
+        key::validate(setting_code, key)?;
+        let raw_key = key::value_key(setting_code, key);
 
-        let values = match self.load_value(&k)? {
-            Some(values) => {
-                let mut values = (*values).clone();
-                values.insert(0, value);
-                values.truncate(self.shared.limit);
-                Arc::new(values)
-            }
-            None => Arc::new(vec![value]),
-        };
+        let _guard = self.shared.stripe(&raw_key).lock();
 
-        let bytes = sonic_rs::to_vec(values.as_ref())?;
-        self.shared.tree.insert(k, bytes)?;
+        let mut values = self.load(&raw_key)?.unwrap_or_default();
+        values.insert(0, value);
+        values.truncate(self.shared.options.limit);
+
+        let bytes = sonic_rs::to_vec(&values)?;
+        self.shared.values.insert(&raw_key, bytes)?;
+        self.touch_locked(&raw_key, Tier::Values)?;
 
         Ok(())
     }
 
-    pub fn entries(&self) -> Result<Vec<DataEntry>> {
-        Self::collect_entries(self.shared.tree.iter())
+        pub fn remove_value(&self, setting_code: &str, key: &str) -> Result<bool> {
+        key::validate(setting_code, key)?;
+        let raw_key = key::value_key(setting_code, key);
+
+        let _guard = self.shared.stripe(&raw_key).lock();
+
+        if !self.shared.values.contains_key(&raw_key)? {
+            return Ok(false);
+        }
+        self.shared.values.remove(&raw_key)?;
+        self.untouch_locked(&raw_key, Tier::Values)?;
+        Ok(true)
     }
 
-    pub fn entries_by_setting_code(&self, setting_code: &str) -> Result<Vec<DataEntry>> {
-        let prefix = Self::make_key(setting_code, "");
-        Self::collect_entries(self.shared.tree.prefix(prefix))
+        pub fn entries(&self) -> Result<Vec<DataEntry>> {
+        Self::collect_entries(self.shared.values.iter())
+    }
+
+        pub fn entries_by_setting_code(&self, setting_code: &str) -> Result<Vec<DataEntry>> {
+        key::validate(setting_code, "")?;
+        Self::collect_entries(self.shared.values.prefix(key::value_prefix(setting_code)))
     }
 
     fn collect_entries(iter: impl Iterator<Item = fjall::Guard>) -> Result<Vec<DataEntry>> {
         let mut result = Vec::new();
 
         for guard in iter {
-            let (key, raw) = guard.into_inner()?;
+            let (raw_key, raw) = guard.into_inner()?;
+            let (setting_code, key) = key::decode_value_key(&raw_key)?;
             let values: Vec<Value> = sonic_rs::from_slice(&raw)?;
 
-            let key = Arc::<str>::from(std::str::from_utf8(&key)?);
-
-            result.push((key, Arc::new(values)));
+            result.push(DataEntry {
+                setting_code: Arc::from(setting_code),
+                key: Arc::from(key),
+                values: Arc::new(values),
+            });
         }
 
         Ok(result)
     }
 
-    pub fn persist(&self) -> Result<()> {
-        self.shared.db.persist(PersistMode::SyncAll)?;
+            pub fn persist(&self, mode: PersistMode) -> Result<()> {
+        self.shared.db.persist(mode)?;
         Ok(())
-    }
-
-    pub fn append_value(
-        &self,
-        setting_code: &str,
-        key: Arc<str>,
-        timestamp: u64,
-        value: Value,
-    ) -> Result<()> {
-        let k = Self::make_key(setting_code, &key);
-        let lock = self.lock_for(&k);
-        let _guard = lock.lock();
-
-        let buffer = self
-            .shared
-            .recent
-            .entry(Arc::from(k.as_str()))
-            .or_insert_with(|| Arc::new(Mutex::new(RingBuffer::new(self.shared.limit))))
-            .clone();
-
-        buffer.lock().push(value.clone());
-
-        let sequence = self.shared.sequence.fetch_add(1, Ordering::Relaxed);
-
-        let history_key = Self::history_key(&k, timestamp, sequence);
-        let bytes = sonic_rs::to_vec(&value)?;
-
-        self.shared.history.insert(history_key, bytes)?;
-
-        Ok(())
-    }
-
-    pub fn get_history(
-        &self,
-        setting_code: &str,
-        key: &str,
-        from: Option<u64>,
-        to: Option<u64>,
-    ) -> Result<Vec<(u64, Value)>> {
-        let k = Self::make_key(setting_code, key);
-
-        let from_ts = from.unwrap_or(0);
-        let to_ts = to.unwrap_or(u64::MAX);
-
-        let range_start = format!("{k}.{from_ts:020}.00000000000000000000");
-        let range_end = format!("{k}.{to_ts:020}.99999999999999999999");
-
-        let mut result = Vec::new();
-
-        for entry in self.shared.history.range(range_start..=range_end) {
-            let history_key = entry.key()?;
-            // let raw = entry.value()?;
-            let raw = self.shared.history.get(&history_key)?.unwrap();
-            let history_key = std::str::from_utf8(&history_key)?;
-
-            let mut parts = history_key.rsplitn(3, '.');
-
-            let _sequence = parts.next().unwrap().parse::<u64>().unwrap();
-
-            let timestamp = parts.next().unwrap().parse::<u64>().unwrap();
-
-            let value = sonic_rs::from_slice(&raw)?;
-
-            result.push((timestamp, value));
-        }
-
-        Ok(result)
     }
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use sonic_rs::JsonValueTrait;
 
-    fn val(s: &str) -> Value {
+    pub(crate) fn val(s: &str) -> Value {
         sonic_rs::from_str(s).unwrap()
     }
 
-    fn open(limit: usize) -> (tempfile::TempDir, Database) {
+            pub(crate) fn open(limit: usize) -> (tempfile::TempDir, Database) {
         let dir = tempfile::tempdir().expect("tempdir");
-        let db = Database::new(dir.path(), limit).expect("open database");
+        let db = Database::open(
+            dir.path(),
+            DatabaseOptions {
+                limit,
+                history: 1000,
+            },
+        )
+        .expect("open database");
         (dir, db)
     }
 
@@ -243,7 +262,7 @@ mod tests {
                     values
                         .insert_value(
                             "test",
-                            Arc::from("key"),
+                            "key",
                             val(&format!("{}", worker * inserts_per_worker + i)),
                         )
                         .unwrap();
@@ -283,7 +302,7 @@ mod tests {
                     let n = worker * inserts_per_worker + i;
 
                     values
-                        .insert_value("test", Arc::from("key"), val(&n.to_string()))
+                        .insert_value("test", "key", val(&n.to_string()))
                         .unwrap();
                 }
             }));
@@ -329,7 +348,7 @@ mod tests {
                     values
                         .insert_value(
                             "test",
-                            Arc::from("key"),
+                            "key",
                             val(&format!("{}", worker * inserts_per_worker + i)),
                         )
                         .unwrap();
@@ -350,41 +369,165 @@ mod tests {
     }
 
     #[test]
-    fn entries_match_get_value_shape() {
+    fn insert_value_keeps_newest_first() {
         let (_dir, db) = open(10);
-        db.insert_value("sc", Arc::from("k"), val("1")).unwrap();
-        db.insert_value("sc", Arc::from("k"), val("2")).unwrap();
+        db.insert_value("sc", "k", val("1")).unwrap();
+        db.insert_value("sc", "k", val("2")).unwrap();
 
-        let entries = db.entries().unwrap();
-        assert_eq!(entries.len(), 1);
-
-        let (key, values) = &entries[0];
-        assert_eq!(&**key, "sc.k");
-        assert_eq!(sonic_rs::to_string(&**values).unwrap(), "[2,1]");
         assert_eq!(
             sonic_rs::to_string(&*db.get_value("sc", "k").unwrap().unwrap()).unwrap(),
             "[2,1]"
+        );
+        assert!(db.get_value("sc", "other").unwrap().is_none());
+    }
+
+    #[test]
+    fn entries_decode_setting_code_and_key() {
+        let (_dir, db) = open(10);
+        db.insert_value("a.b", "c", val("1")).unwrap();
+        db.insert_value("a", "b.c", val("2")).unwrap();
+
+        let mut entries = db.entries().unwrap();
+        entries.sort_by(|x, y| (&x.setting_code, &x.key).cmp(&(&y.setting_code, &y.key)));
+
+        let pairs: Vec<(&str, &str, String)> = entries
+            .iter()
+            .map(|e| {
+                (
+                    &*e.setting_code,
+                    &*e.key,
+                    sonic_rs::to_string(&*e.values).unwrap(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            pairs,
+            [
+                ("a", "b.c", "[2]".to_string()),
+                ("a.b", "c", "[1]".to_string())
+            ]
         );
     }
 
     #[test]
     fn entries_by_setting_code_scans_only_its_prefix() {
         let (_dir, db) = open(10);
-        db.insert_value("a", Arc::from("x"), val("1")).unwrap();
-        db.insert_value("a", Arc::from("y"), val("2")).unwrap();
-        db.insert_value("ab", Arc::from("x"), val("3")).unwrap();
-        db.insert_value("b", Arc::from("x"), val("4")).unwrap();
+        db.insert_value("a", "x", val("1")).unwrap();
+        db.insert_value("a", "y", val("2")).unwrap();
+        db.insert_value("ab", "x", val("3")).unwrap();
+        db.insert_value("b", "x", val("4")).unwrap();
 
         let mut keys: Vec<String> = db
             .entries_by_setting_code("a")
             .unwrap()
             .into_iter()
-            .map(|(k, _)| k.to_string())
+            .map(|e| e.key.to_string())
             .collect();
         keys.sort();
 
-        assert_eq!(keys, ["a.x", "a.y"]);
+        assert_eq!(keys, ["x", "y"]);
         assert!(db.entries_by_setting_code("zzz").unwrap().is_empty());
         assert_eq!(db.entries().unwrap().len(), 4);
+    }
+
+    #[test]
+    fn remove_value_reports_presence() {
+        let (_dir, db) = open(10);
+        db.insert_value("sc", "k", val("1")).unwrap();
+
+        assert!(db.remove_value("sc", "k").unwrap());
+        assert!(!db.remove_value("sc", "k").unwrap());
+        assert!(db.get_value("sc", "k").unwrap().is_none());
+    }
+
+    #[test]
+    fn invalid_keys_are_rejected_not_stored() {
+        let (_dir, db) = open(10);
+
+        assert!(matches!(
+            db.insert_value("", "k", val("1")),
+            Err(DatabaseError::InvalidKey(_))
+        ));
+        assert!(matches!(
+            db.insert_value("a\0b", "k", val("1")),
+            Err(DatabaseError::InvalidKey(_))
+        ));
+        assert!(matches!(
+            db.get_value("a", "k\0"),
+            Err(DatabaseError::InvalidKey(_))
+        ));
+        assert!(db.entries().unwrap().is_empty());
+    }
+
+    #[test]
+    fn values_survive_reopen() {
+        let dir = tempfile::tempdir().unwrap();
+        let options = DatabaseOptions {
+            limit: 10,
+            history: 10,
+        };
+
+        {
+            let db = Database::open(dir.path(), options).unwrap();
+            db.insert_value("sc", "k", val("1")).unwrap();
+            db.persist(PersistMode::SyncAll).unwrap();
+        }
+
+        let db = Database::open(dir.path(), options).unwrap();
+        assert_eq!(
+            sonic_rs::to_string(&*db.get_value("sc", "k").unwrap().unwrap()).unwrap(),
+            "[1]"
+        );
+    }
+
+    #[test]
+    fn foreign_format_marker_is_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let options = DatabaseOptions {
+            limit: 10,
+            history: 10,
+        };
+
+        {
+            let db = fjall::Database::builder(dir.path()).open().unwrap();
+            let meta = db.keyspace("meta", KeyspaceCreateOptions::default).unwrap();
+            meta.insert(META_FORMAT, "1").unwrap();
+            db.persist(PersistMode::SyncAll).unwrap();
+        }
+
+        let err = Database::open(dir.path(), options).unwrap_err();
+        assert!(
+            matches!(&err, DatabaseError::IncompatibleFormat { found, expected } if found == "1" && *expected == FORMAT),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn unmarked_data_is_rejected_but_empty_directory_is_marked() {
+        let dir = tempfile::tempdir().unwrap();
+        let options = DatabaseOptions {
+            limit: 10,
+            history: 10,
+        };
+
+        {
+            let db = fjall::Database::builder(dir.path()).open().unwrap();
+            let values = db
+                .keyspace("values", KeyspaceCreateOptions::default)
+                .unwrap();
+            values.insert("legacy.key", "[]").unwrap();
+            db.persist(PersistMode::SyncAll).unwrap();
+        }
+        assert!(matches!(
+            Database::open(dir.path(), options),
+            Err(DatabaseError::IncompatibleFormat { .. })
+        ));
+
+        let fresh = tempfile::tempdir().unwrap();
+        let db = Database::open(fresh.path(), options).unwrap();
+        assert_eq!(
+            &*db.shared.meta.get(META_FORMAT).unwrap().unwrap(),
+            FORMAT.to_string().as_bytes()
+        );
     }
 }

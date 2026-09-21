@@ -39,6 +39,8 @@ pub struct KafkaConfig {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FunctionConfig {
+    #[serde(default = "def_setting_code")]
+    pub def_setting_code: String,
     pub git_repo_url: String,
     pub git_workdir: String,
     pub git_function_settings: String,
@@ -60,6 +62,10 @@ fn default_git_fetch_interval_secs() -> u64 {
 
 pub fn plugin_path() -> String {
     "plugin/function_settings".to_string()
+}
+
+pub fn def_setting_code() -> String {
+    "directory_value".to_string()
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -85,6 +91,8 @@ pub struct ValuesConfig {
     pub limit: usize,
     #[serde(default = "default_history")]
     pub history: usize,
+            #[serde(default = "default_fsync_ms")]
+    pub fsync_ms: u64,
 }
 
 fn default_function_prefix() -> String {
@@ -104,6 +112,10 @@ fn default_limit() -> usize {
 }
 
 fn default_history() -> usize {
+    1000
+}
+
+fn default_fsync_ms() -> u64 {
     1000
 }
 

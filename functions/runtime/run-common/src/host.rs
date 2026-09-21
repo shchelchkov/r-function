@@ -146,6 +146,6 @@ pub fn remove_value(req: &[u8]) -> Result<(), i32> {
 }
 
 #[allow(dead_code)]
-pub fn http_request(req: &[u8]) -> Result<(), i32> {
-    call_unit(raw_http_request, req)
+pub fn http_request(req: &[u8]) -> Result<Option<Vec<u8>>, i32> {
+    call_bytes(raw_http_request, req)
 }

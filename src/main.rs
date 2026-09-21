@@ -1,6 +1,7 @@
 mod app;
 mod bootstrap;
 mod http;
+mod persist;
 mod pipeline;
 mod shutdown;
 mod telemetry;

@@ -9,8 +9,9 @@ use std::sync::Arc;
 pub trait PluginLoader: Send + Sync {
     fn git_plugin_path(&self) -> Result<String, PluginError>;
 
-    fn resolve(&self, module_name: &str) -> Result<ObjectId, PluginError>;
-    fn materialize(&self, oid: ObjectId) -> Result<PathBuf, PluginError>;
+        fn resolve(&self, module_name: &str) -> Result<ObjectId, PluginError>;
+
+                fn materialize(&self, oid: ObjectId) -> Result<PathBuf, PluginError>;
 }
 
 #[derive(Clone)]
@@ -21,7 +22,7 @@ pub struct GitPluginLoader {
 struct Shared {
     git: Arc<GitHandle>,
     git_plugin_path: Arc<str>,
-    cache_dir: PathBuf,
+                cache_dir: PathBuf,
 }
 
 impl GitPluginLoader {
@@ -156,7 +157,8 @@ mod tests {
         assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
     }
 
-    #[test]
+            #[test]
+    #[ignore = "нужна собранная cdylib плагина в R_PLUGIN_SMOKE_LIB"]
     fn materialized_real_plugin_loads() {
         let lib = std::env::var("R_PLUGIN_SMOKE_LIB").expect("R_PLUGIN_SMOKE_LIB is not set");
         let bytes = std::fs::read(&lib).expect("read plugin cdylib");

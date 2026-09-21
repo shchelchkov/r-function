@@ -12,7 +12,7 @@ use r_consumer::functions::streams::stream::Stream;
 use r_consumer::kafka::Consumer;
 use r_consumer::process::process::Processor;
 use r_consumer::process::producer::kafka::producer::Producer;
-use r_db::db::db::Database;
+use r_db::db::db::{Database, DatabaseOptions};
 use r_feed::FeedHub;
 use r_plugin::plugin::loader::GitPluginLoader;
 use r_plugin::plugin::plugin_module::PluginModule;
@@ -63,7 +63,13 @@ pub async fn build(cfg: &AppConfig) -> Result<Components, Box<dyn Error>> {
     let max_instances = cfg.pipeline.concurrency as u32 + watchdog_slots + 2;
 
     let values = Values::new()?;
-    let db = Database::new(&cfg.values.path, cfg.values.limit)?;
+    let db = Database::open(
+        &cfg.values.path,
+        DatabaseOptions {
+            limit: cfg.values.limit,
+            history: cfg.values.history,
+        },
+    )?;
     let polygon = Polygon::new();
     let runtime = Arc::new(
         WasmRuntime::new(

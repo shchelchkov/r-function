@@ -127,12 +127,11 @@ impl PluginRepository {
             .map_err(|error| PluginError::Internal(error.to_string()))?
     }
 
-    async fn compile(self: &Arc<Self>, oid: ObjectId) -> Result<Arc<Plugin>, PluginError> {
+                async fn compile(self: &Arc<Self>, oid: ObjectId) -> Result<Arc<Plugin>, PluginError> {
         let loader = Arc::clone(&self.loader);
         spawn_blocking(move || {
             let path = loader.materialize(oid)?;
-            let plugin = unsafe { Plugin::load(&path) }
-                .map_err(|error| PluginError::Compile(error.to_string()))?;
+            let plugin = unsafe { Plugin::load(&path) }?;
             Ok(Arc::new(plugin))
         })
         .await

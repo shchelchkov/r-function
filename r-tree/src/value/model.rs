@@ -7,8 +7,6 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-// PolygonKey
-//
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PolygonKey {
     pub setting_code: Arc<str>,
@@ -24,8 +22,6 @@ impl PolygonKey {
     }
 }
 
-// PolygonObject
-//
 #[derive(Debug, Clone)]
 pub struct PolygonObject {
     pub id: i64,
@@ -33,8 +29,6 @@ pub struct PolygonObject {
     pub value: Arc<Value>,
 }
 
-// RTree
-//
 #[derive(Debug, Clone)]
 pub struct IndexedPolygon {
     id: i64,
@@ -68,8 +62,6 @@ impl RTreeObject for IndexedPolygon {
     }
 }
 
-// PolygonIndex
-//
 #[derive(Debug)]
 pub struct PolygonIndex {
     tree: RTree<IndexedPolygon>,
@@ -117,8 +109,6 @@ impl PolygonIndex {
     }
 }
 
-// Bucket
-//
 #[derive(Debug)]
 pub struct Bucket {
     pub objects: RwLock<HashMap<i64, PolygonObject>>,

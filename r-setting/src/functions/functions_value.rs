@@ -29,6 +29,7 @@ impl FunctionValue {
             values: SettingStore::new(
                 git,
                 function_config.git_function_value.clone(),
+                function_config.def_setting_code.clone(),
                 "function value",
             ),
         });

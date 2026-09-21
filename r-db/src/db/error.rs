@@ -9,9 +9,12 @@ pub enum DatabaseError {
     #[error("invalid UTF-8: {0}")]
     InvalidUtf8(#[from] std::str::Utf8Error),
 
-    #[error("value not found: {0}")]
-    NotFound(String),
+            #[error("invalid key: {0}")]
+    InvalidKey(String),
 
-    #[error("internal error: {0}")]
-    Internal(String),
+        #[error("corrupt record: {0}")]
+    Corrupt(String),
+
+            #[error("incompatible database format: found {found}, expected {expected}")]
+    IncompatibleFormat { found: String, expected: u32 },
 }

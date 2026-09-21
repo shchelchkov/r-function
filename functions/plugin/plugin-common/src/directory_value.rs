@@ -3,7 +3,6 @@ use f_common::fun;
 use f_common::message::convert_value;
 use r_plugin_api::{HostApi};
 use sonic_rs::{JsonContainerTrait, JsonValueTrait, Object, Value};
-use uuid::Uuid;
 use r_error::plugin::error::PluginError;
 
 const SETTING_CODE: &str = "value_process";
@@ -18,8 +17,12 @@ pub fn value_process(api: &HostApi, input: &Object) -> Result<Value, PluginError
         Err(err) => return Err(err),
     };
 
-    let k = Uuid::new_v4().to_string();
-    api.insert_value(SETTING_CODE, &k, &value);
+    let k = fun::uuid(&key);
+    if (fun::is_blank(setting_code)) {
+        api.insert_value(SETTING_CODE, &k, &value);
+    } else {
+        api.insert_value(setting_code, &k, &value);
+    }
 
     if let Some(values) = convert_value(&input, key, "setting_code") {
         for value in values.iter() {

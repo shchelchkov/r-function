@@ -5,7 +5,7 @@ use gix::ObjectId;
 use gix::Repository;
 use r_error::runtime::error::RuntimeError;
 use serde::de::DeserializeOwned;
-use tracing::{error, info};
+use tracing::{info, warn};
 
 use crate::git::GitHandle;
 
@@ -24,6 +24,7 @@ impl<T> Clone for SettingStore<T> {
 struct StoreShared<T> {
     git: Arc<GitHandle>,
     git_json_path: Arc<str>,
+    def_setting_code: Arc<str>,
     kind: &'static str,
     cache: DashMap<String, Arc<Vec<T>>>,
 }
@@ -32,20 +33,31 @@ impl<T: DeserializeOwned + Send + Sync + 'static> SettingStore<T> {
     pub fn new(
         git: Arc<GitHandle>,
         git_json_path: impl Into<Arc<str>>,
+        def_setting_code: impl Into<Arc<str>>,
         kind: &'static str,
     ) -> SettingStore<T> {
         SettingStore {
             shared: Arc::new(StoreShared {
                 git,
                 git_json_path: git_json_path.into(),
+                def_setting_code: def_setting_code.into(),
                 kind,
                 cache: DashMap::new(),
             }),
         }
     }
 
+    pub fn def_setting_code(&self) -> &str {
+        &self.shared.def_setting_code
+    }
+
     pub fn get(&self, code: &str) -> Option<Arc<Vec<T>>> {
         self.shared.cache.get(code).map(|v| Arc::clone(&*v))
+    }
+
+            pub fn get_or_default(&self, code: &str) -> Option<Arc<Vec<T>>> {
+        self.get(code)
+            .or_else(|| self.get(&self.shared.def_setting_code))
     }
 
     pub fn get_or_load<F>(&self, value_code: &str, loader: F) -> Option<Arc<Vec<T>>>
@@ -73,8 +85,9 @@ impl<T: DeserializeOwned + Send + Sync + 'static> SettingStore<T> {
                 self.shared.cache.insert(value_code.into(), r.clone());
                 Some(r)
             }
-            Err(_e) => {
-                error!(
+            Err(e) => {
+                warn!(
+                    error = %e,
                     "SettingStore.get_or_load:::::::::::: spec {:?} = None",
                     &spec
                 );

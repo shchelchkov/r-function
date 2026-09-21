@@ -2,6 +2,7 @@ use r_plugin_api::{Buffer, HostApi};
 
 mod process;
 
+r_plugin_api::export_abi_version!();
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn process(

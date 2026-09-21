@@ -37,7 +37,6 @@ pub enum PluginError {
     Decode(String),
 }
 
-
 impl PluginError {
     #[must_use]
     pub fn is_transient(&self) -> bool {
