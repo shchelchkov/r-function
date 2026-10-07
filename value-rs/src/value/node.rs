@@ -19,14 +19,22 @@ pub fn from_slice_and_build_key(
     value_key: &[String],
     setting_code: &str,
 ) -> Result<Option<Value>> {
-    Ok(
-        parse_and_build_key(raw, value_key)?.map(|(value, key)| Value {
-            value_key: value_key.to_vec(),
-            setting_code: setting_code.into(),
-            key,
-            value,
-        }),
-    )
+    Ok(parse_and_build_key(raw, value_key)?
+        .map(|(value, key)| convert(value_key, setting_code, value, key)))
+}
+
+fn convert(
+    value_key: &[String],
+    setting_code: &str,
+    value: sonic_rs::Value,
+    key: Arc<str>,
+) -> Value {
+    Value {
+        value_key: value_key.to_vec(),
+        setting_code: setting_code.into(),
+        key,
+        value,
+    }
 }
 
 pub fn to_vec(value: &[Value]) -> Result<Vec<u8>> {

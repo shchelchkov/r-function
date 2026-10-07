@@ -12,7 +12,9 @@ use rdkafka::error::{KafkaError as RdKafkaError, RDKafkaErrorCode};
 use rdkafka::{ClientConfig, Message as _, Offset, TopicPartitionList};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
+use tokio::time::MissedTickBehavior;
 use tracing::{debug, error};
 
 pub struct Work {
@@ -48,7 +50,8 @@ impl Consumer {
             client.set(k, v);
         }
 
-        let consumer: StreamConsumer<StatsContext> = client.create_with_context(StatsContext)?;
+        let consumer: StreamConsumer<StatsContext> =
+            client.create_with_context(StatsContext::default())?;
 
         if !cfg.topics.is_empty() {
             let refs: Vec<&str> = cfg.topics.iter().map(|s| s.as_str()).collect();
@@ -77,6 +80,21 @@ impl Consumer {
         let max_inflight = max_inflight.max(1);
         let mut inflight = FuturesUnordered::new();
 
+        let rps = self.consumer.context().rps.clone();
+        let ticker = tokio::spawn({
+            let rps = rps.clone();
+            async move {
+                let mut tick = tokio::time::interval(Duration::from_secs(1));
+                tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
+                let mut last = tick.tick().await;
+                loop {
+                    let now = tick.tick().await;
+                    rps.sample(now - last);
+                    last = now;
+                }
+            }
+        });
+
         let stream = self.consumer.stream().take_until(shutdown);
         tokio::pin!(stream);
 
@@ -99,6 +117,7 @@ impl Consumer {
                         Ok(b) => b,
                         Err(e) => { error!(%e); continue; }
                     };
+                    rps.inc();
 
                     let resolved = match b.payload() {
                         Some(raw) => self.resolver.resolve_value(raw).await,
@@ -147,6 +166,7 @@ impl Consumer {
         while let Some(done) = inflight.next().await {
             self.apply_commit(done);
         }
+        ticker.abort();
 
         if let Err(e) = self.consumer.commit_consumer_state(CommitMode::Sync) {
             error!(error=%e, "final commit failed");

@@ -26,4 +26,6 @@ async-trait = "0.1.83"
 moka = { workspace = true, features = ["sync"] }
 arc-swap = { workspace = true }
 sonic-rs = { workspace = true }
-reqwest = { workspace = true, features = ["rustls"] }
+reqwest = { workspace = true, features = ["rustls", "socks"] }
+hmac = "0.12"
+sha2 = "0.10"

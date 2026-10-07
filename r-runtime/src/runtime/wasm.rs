@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::runtime::executor::{StoreCtx, WasmExecutor};
@@ -8,6 +9,7 @@ use crate::runtime::host::{
 use crate::runtime::loader::ModuleLoader;
 use crate::runtime::module_repository::WasmModuleRepository;
 use async_trait::async_trait;
+use r_config::config::HttpAuthConfig;
 use r_error::runtime::error::RuntimeError;
 use r_producer::host::send_pipeline::{SendPipeline, SendValue};
 use r_producer::kafka::producer::Producer;
@@ -42,6 +44,7 @@ impl WasmRuntime {
         values: Values,
         polygon: Polygon,
         producer: Producer,
+        http_auth: &HashMap<String, HttpAuthConfig>,
         max_instances: u32,
     ) -> Result<Self, RuntimeError> {
         let executor = WasmExecutor::new(max_instances)?;
@@ -81,9 +84,7 @@ impl WasmRuntime {
 
         registry.register(GetFunctionValue { function_value });
         registry.register(GetStreamSetting { stream });
-        registry.register(HttpRequest {
-            client: reqwest::Client::new(),
-        });
+        registry.register(HttpRequest::new(reqwest::Client::new(), http_auth)?);
 
         let (send, send_txs) = SendPipeline::new(producer);
         registry.register(SendValue { txs: send_txs });

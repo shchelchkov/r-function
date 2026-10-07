@@ -7,6 +7,7 @@ use wasmtime::{Caller, Linker};
 
 pub mod contains_point;
 pub mod contains_polygon;
+pub mod cred;
 pub mod get_function_setting;
 pub mod get_function_value;
 pub mod get_stream_setting;
@@ -17,6 +18,8 @@ pub mod put_value;
 pub mod remove_polygon;
 pub mod remove_value;
 pub mod send_value;
+#[cfg(test)]
+mod test_server;
 
 pub use contains_point::ContainsPoint;
 pub use contains_polygon::ContainsPolygon;

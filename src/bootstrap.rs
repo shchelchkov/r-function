@@ -87,6 +87,7 @@ pub async fn build(cfg: &AppConfig) -> Result<Components, Box<dyn Error>> {
             values.clone(),
             polygon.clone(),
             producer.clone(),
+            &cfg.http_auth,
             max_instances,
         )
         .map_err(|e| RuntimeError::Internal(e.to_string()))?,

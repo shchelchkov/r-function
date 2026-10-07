@@ -14,6 +14,30 @@ pub struct AppConfig {
     pub pipeline: PipelineConfig,
     #[serde(default)]
     pub watchdog: Option<WatchdogConfig>,
+        #[serde(default)]
+    pub http_auth: HashMap<String, HttpAuthConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct HttpAuthConfig {
+    pub kind: HttpAuthKind,
+        pub base_url: String,
+    pub api_key_env: String,
+        #[serde(default)]
+    pub api_secret_env: Option<String>,
+    #[serde(default = "default_recv_window")]
+    pub recv_window: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HttpAuthKind {
+        BybitV5,
+        Bearer,
+}
+
+fn default_recv_window() -> u64 {
+    5000
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

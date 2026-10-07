@@ -83,17 +83,17 @@ impl Producer {
         }
         let objects = parse_objects(payload)?;
 
-        self.enqueue_to(&routes, channel, key, &objects, from, setting_code)
+        self.enqueue_to(&routes, channel, setting_code, key, &objects, from)
     }
 
     fn enqueue_to(
         &self,
         routes: &[(&str, Option<&str>)],
         channel_ws: Option<&[u8]>,
+        _setting_code: &str,
         key: Option<&[u8]>,
         objects: &[Value],
         from: usize,
-        _setting_code: &str,
     ) -> Result<Enqueued, KafkaSendError> {
         let n = routes.len();
         let channel_ws = channel_ws.and_then(|b| std::str::from_utf8(b).ok());
@@ -135,7 +135,6 @@ impl Producer {
                     self.feed.publish(k, key, payload);
                 }
             }
-
             let mut record = FutureRecord::<[u8], [u8]>::to(channel).payload(payload);
             if let Some(k) = key {
                 record = record.key(k);
@@ -217,7 +216,7 @@ impl Producer {
                     }
                 };
                 self.feed.publish(channel, key, payload);
-                self.enqueue_payload(payload, channel, key, &mut inflight)
+                self.enqueue_payload(payload, channel, setting_code, key, &mut inflight)
                     .await?;
             }
         }
@@ -232,6 +231,7 @@ impl Producer {
         &self,
         payload: &[u8],
         channel: &str,
+        _setting_code: &str,
         key: Option<&[u8]>,
         inflight: &mut FuturesUnordered<DeliveryFuture>,
     ) -> Result<(), KafkaSendError> {

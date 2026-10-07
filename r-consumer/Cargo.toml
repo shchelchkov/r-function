@@ -14,7 +14,7 @@ anyhow = { workspace = true }
 axum = "0.8.8"
 futures = { workspace = true }
 serde = { workspace = true }
-tokio = { workspace = true, features = ["sync", "macros", "rt"] }
+tokio = { workspace = true, features = ["sync", "macros", "rt", "time"] }
 tracing = { workspace = true }
 
 [dev-dependencies]
