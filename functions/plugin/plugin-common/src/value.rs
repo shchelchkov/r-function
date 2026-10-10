@@ -8,6 +8,13 @@ pub trait FnState: Sized {
     fn from_value(values: &[Value]) -> Self;
 
     fn into_value(self) -> Value;
+
+            fn reloaded(&self) -> Self
+    where
+        Self: Clone,
+    {
+        Self::from_value(&[self.clone().into_value()])
+    }
 }
 
 pub struct StateApi<'a> {
@@ -34,6 +41,10 @@ impl<'a> StateApi<'a> {
 
 pub fn load<S: FnState>(api: &HostApi, key: &str) -> S {
     S::from_value(&load_raw(api, S::CODE, key))
+}
+
+pub fn try_load<S: FnState>(api: &HostApi, key: &str) -> Option<S> {
+    api.get_value(S::CODE, key).map(|values| S::from_value(&values))
 }
 
 pub fn save<S: FnState>(api: &HostApi, key: &str, state: S) -> bool {
