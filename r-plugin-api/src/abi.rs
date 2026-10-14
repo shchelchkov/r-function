@@ -149,7 +149,7 @@ pub struct HostApi {
 
     pub free_buffer: unsafe extern "C" fn(buffer: Buffer),
 
-            pub db_get_value: unsafe extern "C" fn(
+    pub db_get_value: unsafe extern "C" fn(
         ctx: *mut c_void,
 
         setting_code_ptr: *const u8,
@@ -159,7 +159,7 @@ pub struct HostApi {
         key_len: usize,
     ) -> Buffer,
 
-                pub db_get_history: unsafe extern "C" fn(
+    pub db_get_history: unsafe extern "C" fn(
         ctx: *mut c_void,
 
         setting_code_ptr: *const u8,
@@ -178,7 +178,7 @@ pub struct HostApi {
         newest_first: bool,
     ) -> Buffer,
 
-        pub db_remove_value: unsafe extern "C" fn(
+    pub db_remove_value: unsafe extern "C" fn(
         ctx: *mut c_void,
 
         setting_code_ptr: *const u8,
@@ -187,6 +187,18 @@ pub struct HostApi {
         key_ptr: *const u8,
         key_len: usize,
     ) -> bool,
+
+    pub get_value_at: unsafe extern "C" fn(
+        ctx: *mut c_void,
+
+        setting_code_ptr: *const u8,
+        setting_code_len: usize,
+
+        key_ptr: *const u8,
+        key_len: usize,
+
+        at_ms: i64,
+    ) -> Buffer,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -242,7 +254,7 @@ impl HostApi {
         Ok(())
     }
 
-                pub fn append_value(
+    pub fn append_value(
         &self,
         setting_code: &str,
         key: &str,
@@ -280,6 +292,25 @@ impl HostApi {
             )
         };
 
+        self.take_values(buffer)
+    }
+
+    pub fn get_value_at(&self, setting_code: &str, key: &str, at: i64) -> Option<Vec<Value>> {
+        let buffer = unsafe {
+            (self.get_value_at)(
+                self.ctx,
+                setting_code.as_ptr(),
+                setting_code.len(),
+                key.as_ptr(),
+                key.len(),
+                at,
+            )
+        };
+
+        self.take_values(buffer)
+    }
+
+    fn take_values(&self, buffer: Buffer) -> Option<Vec<Value>> {
         if buffer.ptr.is_null() {
             return None;
         }
@@ -346,7 +377,7 @@ impl HostApi {
         result
     }
 
-            fn take_json<T: for<'de> serde::Deserialize<'de>>(&self, buffer: Buffer) -> Option<T> {
+    fn take_json<T: for<'de> serde::Deserialize<'de>>(&self, buffer: Buffer) -> Option<T> {
         if buffer.ptr.is_null() {
             return None;
         }
@@ -364,7 +395,7 @@ impl HostApi {
         result
     }
 
-        pub fn db_get_value(&self, setting_code: &str, key: &str) -> Option<Vec<Value>> {
+    pub fn db_get_value(&self, setting_code: &str, key: &str) -> Option<Vec<Value>> {
         let buffer = unsafe {
             (self.db_get_value)(
                 self.ctx,
@@ -378,7 +409,7 @@ impl HostApi {
         self.take_json(buffer)
     }
 
-            pub fn db_get_history(
+    pub fn db_get_history(
         &self,
         setting_code: &str,
         key: &str,
@@ -415,7 +446,7 @@ impl HostApi {
         self.take_json(buffer)
     }
 
-        pub fn db_remove_value(&self, setting_code: &str, key: &str) -> bool {
+    pub fn db_remove_value(&self, setting_code: &str, key: &str) -> bool {
         unsafe {
             (self.db_remove_value)(
                 self.ctx,

@@ -168,7 +168,7 @@ mod tests {
         sonic_rs::from_str(s).unwrap()
     }
 
-        fn take(buffer: Buffer) -> Option<String> {
+    fn take(buffer: Buffer) -> Option<String> {
         if buffer.ptr.is_null() {
             return None;
         }

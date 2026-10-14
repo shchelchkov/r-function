@@ -21,6 +21,8 @@ use r_runtime::runtime::wasm::WasmRuntime;
 use r_tree::value::polygon::Polygon;
 use r_value::value::value::Values;
 
+use r_state_service::state_service::StateService;
+
 pub struct Components {
     pub consumer: Consumer,
     pub git: Arc<GitHandle>,
@@ -68,7 +70,6 @@ pub async fn build(cfg: &AppConfig) -> Result<Components, Box<dyn Error>> {
     let loader = GitModuleLoader::new(git.clone(), &cfg.function_config);
     let max_instances = cfg.pipeline.concurrency as u32 + watchdog_slots + 2;
 
-    let values = Values::new()?;
     let db = Database::open(
         &cfg.values.path,
         DatabaseOptions {
@@ -76,6 +77,25 @@ pub async fn build(cfg: &AppConfig) -> Result<Components, Box<dyn Error>> {
             history: cfg.values.history,
         },
     )?;
+    let values = if cfg.values.persist_state {
+        let service = cfg
+            .values
+            .restore_service
+            .as_ref()
+            .map(StateService::new)
+            .transpose()?;
+        tracing::info!(
+            path = %cfg.values.path,
+            service = service.as_ref().map(StateService::url),
+            "values: restore from snapshot on first access"
+        );
+        Values::with_restore(crate::persist::restore_from(db.clone(), service))?
+    } else {
+        if cfg.values.restore_service.is_some() {
+            tracing::warn!("values.restore_service is ignored without values.persist_state");
+        }
+        Values::new()?
+    };
     let polygon = Polygon::new();
     let runtime = Arc::new(
         WasmRuntime::new(

@@ -7,7 +7,7 @@ pub use buffer::Buffer;
 pub use plugin::Plugin;
 pub use r_error::plugin::error::PluginError;
 
-pub const ABI_VERSION: u32 = 2;
+pub const ABI_VERSION: u32 = 3;
 
 #[macro_export]
 macro_rules! export_abi_version {

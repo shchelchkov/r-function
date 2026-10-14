@@ -4,3 +4,4 @@ pub use r_consumer as route;
 pub use r_plugin as plugin;
 pub use r_router as router;
 pub use r_runtime as runtime;
+pub use r_state_service as state_service;

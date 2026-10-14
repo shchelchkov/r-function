@@ -17,11 +17,11 @@ pub(super) struct Headers {
 }
 
 pub(super) enum Auth {
-            Hmac {
+    Hmac {
         prehash: &'static [Part],
         headers: Headers,
     },
-        Bearer,
+    Bearer,
 }
 
 pub(super) fn auth(kind: HttpAuthKind) -> Auth {

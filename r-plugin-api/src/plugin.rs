@@ -6,6 +6,14 @@ use sonic_rs::Value;
 pub trait Plugin: Send + Sync {
     async fn run_plugin(&self, plugin_name: &str, input: Vec<u8>) -> Result<Vec<u8>, PluginError>;
 
+    async fn run_plugin_discard(
+        &self,
+        plugin_name: &str,
+        input: Vec<u8>,
+    ) -> Result<(), PluginError> {
+        self.run_plugin(plugin_name, input).await.map(|_| ())
+    }
+
     async fn invoke(&self, plugin_name: &str, value: &[Value]) -> Result<Vec<Value>, PluginError> {
         let payload = sonic_rs::to_vec(value).map_err(|e| PluginError::Encode(e.to_string()))?;
         let out = self.run_plugin(plugin_name, payload).await?;
@@ -14,7 +22,6 @@ pub trait Plugin: Send + Sync {
 
     async fn invoke_discard(&self, plugin_name: &str, value: &[Value]) -> Result<(), PluginError> {
         let payload = sonic_rs::to_vec(value).map_err(|e| PluginError::Encode(e.to_string()))?;
-        self.run_plugin(plugin_name, payload).await?;
-        Ok(())
+        self.run_plugin_discard(plugin_name, payload).await
     }
 }

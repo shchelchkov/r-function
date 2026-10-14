@@ -127,7 +127,7 @@ mod tests {
         let m = RpsMeter::default();
         feed(&m, 10, Duration::from_secs(1));
         feed(&m, 0, Duration::from_secs(1));
-        feed(&m, 60, Duration::from_secs(2)); 
+        feed(&m, 60, Duration::from_secs(2));
 
         let w = m.take();
         assert_eq!((w.min, w.max, w.n), (0.0, 30.0, 3));

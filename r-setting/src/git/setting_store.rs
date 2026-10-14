@@ -55,7 +55,7 @@ impl<T: DeserializeOwned + Send + Sync + 'static> SettingStore<T> {
         self.shared.cache.get(code).map(|v| Arc::clone(&*v))
     }
 
-            pub fn get_or_default(&self, code: &str) -> Option<Arc<Vec<T>>> {
+    pub fn get_or_default(&self, code: &str) -> Option<Arc<Vec<T>>> {
         self.get(code)
             .or_else(|| self.get(&self.shared.def_setting_code))
     }

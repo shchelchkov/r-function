@@ -14,7 +14,7 @@ pub struct HttpRequest {
 }
 
 impl HttpRequest {
-            pub fn new(
+    pub fn new(
         client: reqwest::Client,
         profiles: &HashMap<String, HttpAuthConfig>,
     ) -> Result<Self, RuntimeError> {
@@ -32,7 +32,7 @@ struct Req {
     url: String,
     body: Option<String>,
     content_type: Option<String>,
-        auth: Option<String>,
+    auth: Option<String>,
 }
 
 #[derive(Serialize)]

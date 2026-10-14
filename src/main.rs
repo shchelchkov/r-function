@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     telemetry::init();
 
     let cfg_path = std::env::var("RF_CONFIG").unwrap_or_else(|_| "config.yaml".to_string());
-    info!("::::::::::::::::::main::cfg_path : {}", &cfg_path);
+    info!("main::cfg_path : {}", &cfg_path);
     let cfg = AppConfig::from_file(&cfg_path)?;
 
     let worker_threads = cfg

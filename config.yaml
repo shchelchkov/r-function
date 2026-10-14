@@ -42,8 +42,6 @@ function_config:
   git_revision: origin/main
   git_fetch_interval_secs: 5
 
-watchdog:
-  module_name: f-watchdog.wasm
-  setting_code: obi_state
-  key: function
-  interval_secs: 30
+
+values:
+  path: /data/values/message

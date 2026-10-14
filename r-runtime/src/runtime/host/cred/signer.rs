@@ -40,11 +40,11 @@ impl CredSigner {
         self.kind
     }
 
-        pub fn credentials(&self) -> &Arc<RwLock<Credentials>> {
+    pub fn credentials(&self) -> &Arc<RwLock<Credentials>> {
         &self.credentials
     }
 
-        pub fn api_key(&self) -> String {
+    pub fn api_key(&self) -> String {
         self.credentials
             .read()
             .unwrap_or_else(PoisonError::into_inner)
@@ -52,7 +52,7 @@ impl CredSigner {
             .clone()
     }
 
-            pub fn sign(&self, timestamp_ms: u64, payload: &str) -> Option<Signature> {
+    pub fn sign(&self, timestamp_ms: u64, payload: &str) -> Option<Signature> {
         let Auth::Hmac { prehash, .. } = scheme::auth(self.kind) else {
             return None;
         };

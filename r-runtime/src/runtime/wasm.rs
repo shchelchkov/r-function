@@ -9,7 +9,7 @@ use crate::runtime::host::{
 use crate::runtime::loader::ModuleLoader;
 use crate::runtime::module_repository::WasmModuleRepository;
 use async_trait::async_trait;
-use r_config::config::HttpAuthConfig;
+use r_config::config::{HttpAuthConfig, WasmConfig};
 use r_error::runtime::error::RuntimeError;
 use r_producer::host::send_pipeline::{SendPipeline, SendValue};
 use r_producer::kafka::producer::Producer;
@@ -45,9 +45,10 @@ impl WasmRuntime {
         polygon: Polygon,
         producer: Producer,
         http_auth: &HashMap<String, HttpAuthConfig>,
+        limits: &WasmConfig,
         max_instances: u32,
     ) -> Result<Self, RuntimeError> {
-        let executor = WasmExecutor::new(max_instances)?;
+        let executor = WasmExecutor::new(max_instances, limits)?;
 
         let mut linker = Linker::<StoreCtx>::new(executor.engine());
         wasmtime_wasi::p1::add_to_linker_async(&mut linker, |c: &mut StoreCtx| &mut c.wasi)

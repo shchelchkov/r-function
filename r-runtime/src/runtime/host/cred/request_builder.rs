@@ -19,7 +19,7 @@ impl CredRequestBuilder {
         Self { base_url, signer }
     }
 
-        pub fn from_config(name: &str, cfg: &HttpAuthConfig) -> Result<Self, RuntimeError> {
+    pub fn from_config(name: &str, cfg: &HttpAuthConfig) -> Result<Self, RuntimeError> {
         let env = |var: &str| {
             std::env::var(var)
                 .map_err(|_| RuntimeError::Load(format!("http_auth {name}: env {var} is not set")))
@@ -51,7 +51,7 @@ impl CredRequestBuilder {
         &self.signer
     }
 
-            pub fn build(
+    pub fn build(
         &self,
         client: &Client,
         method: Method,
@@ -84,7 +84,7 @@ impl CredRequestBuilder {
         })
     }
 
-        fn resolve(&self, url: &str) -> Result<Url, RuntimeError> {
+    fn resolve(&self, url: &str) -> Result<Url, RuntimeError> {
         let resolved = self
             .base_url
             .join(url)

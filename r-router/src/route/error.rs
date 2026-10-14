@@ -7,7 +7,7 @@ pub enum ApiError {
     NotFound,
     Value(ValueError),
     Database(DatabaseError),
-        Internal(String),
+    Internal(String),
 }
 
 impl From<ValueError> for ApiError {

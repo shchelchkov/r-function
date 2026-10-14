@@ -5,7 +5,7 @@ use crate::host::db::{host_db_get_history, host_db_get_value, host_db_remove_val
 use crate::host::free_buffer::host_free_buffer;
 use crate::host::get_function_setting::host_get_function_setting;
 use crate::host::get_function_value::host_get_function_value;
-use crate::host::get_value::host_get_value;
+use crate::host::get_value::{host_get_value, host_get_value_at};
 use crate::host::insert_value::host_insert_value;
 use crate::host::put_polygon::host_put_polygon;
 use crate::host::put_value::host_put_value;
@@ -48,6 +48,7 @@ pub fn create_api(context: &PluginContext) -> HostApi {
         db_get_value: host_db_get_value,
         db_get_history: host_db_get_history,
         db_remove_value: host_db_remove_value,
+        get_value_at: host_get_value_at,
     }
 }
 

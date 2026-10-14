@@ -7,12 +7,12 @@ use r_setting::streams::stream::Stream;
 use r_tree::value::polygon::Polygon;
 use r_value::value::value::Values;
 
-pub mod plugin_module;
-pub mod plugin_repository;
 pub mod executor;
 pub mod loader;
 #[allow(clippy::module_inception)]
 pub mod plugin;
+pub mod plugin_module;
+pub mod plugin_repository;
 
 pub struct PluginContext {
     pub function: Function,

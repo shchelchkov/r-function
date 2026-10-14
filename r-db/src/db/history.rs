@@ -64,7 +64,7 @@ pub struct HistoryQuery {
 }
 
 impl Database {
-            pub fn trim_every(&self) -> u32 {
+    pub fn trim_every(&self) -> u32 {
         (self.shared.options.history / 10).max(16) as u32
     }
 
@@ -96,7 +96,7 @@ impl Database {
         Ok(())
     }
 
-            fn count_append(&self, prefix: &[u8]) -> bool {
+    fn count_append(&self, prefix: &[u8]) -> bool {
         let trim_every = self.trim_every();
         match self.shared.counters.get_mut(prefix) {
             Some(mut count) => {
@@ -155,7 +155,7 @@ impl Database {
         })
     }
 
-        pub fn trim_history(&self, setting_code: &str, key: &str) -> Result<usize> {
+    pub fn trim_history(&self, setting_code: &str, key: &str) -> Result<usize> {
         key::validate(setting_code, key)?;
         let raw_key = key::value_key(setting_code, key);
         let prefix = key::history_prefix(setting_code, key);
@@ -164,7 +164,7 @@ impl Database {
         self.trim_locked(&prefix)
     }
 
-            fn trim_locked(&self, prefix: &[u8]) -> Result<usize> {
+    fn trim_locked(&self, prefix: &[u8]) -> Result<usize> {
         let keep = self.shared.options.history;
 
         let mut stale = Vec::new();

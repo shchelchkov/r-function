@@ -22,8 +22,8 @@ const STRIPES: usize = 64;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DatabaseOptions {
-        pub limit: usize,
-        pub history: usize,
+    pub limit: usize,
+    pub history: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -45,11 +45,11 @@ pub(crate) struct Shared {
     pub(crate) values: Keyspace,
     pub(crate) history: Keyspace,
     pub(crate) meta: Keyspace,
-        pub(crate) registry: Keyspace,
+    pub(crate) registry: Keyspace,
     locks: Box<[Mutex<()>]>,
     hasher: RandomState,
-        pub(crate) sequence: Mutex<crate::db::history::Sequence>,
-        pub(crate) counters: DashMap<Vec<u8>, u32>,
+    pub(crate) sequence: Mutex<crate::db::history::Sequence>,
+    pub(crate) counters: DashMap<Vec<u8>, u32>,
 }
 
 impl std::fmt::Debug for Database {
@@ -62,7 +62,7 @@ impl std::fmt::Debug for Database {
 }
 
 impl Shared {
-                pub(crate) fn stripe(&self, raw_key: &[u8]) -> &Mutex<()> {
+    pub(crate) fn stripe(&self, raw_key: &[u8]) -> &Mutex<()> {
         let index = self.hasher.hash_one(raw_key) as usize % self.locks.len();
         &self.locks[index]
     }
@@ -108,7 +108,7 @@ impl Database {
         })
     }
 
-            fn check_format(meta: &Keyspace, data: &[&Keyspace]) -> Result<()> {
+    fn check_format(meta: &Keyspace, data: &[&Keyspace]) -> Result<()> {
         match meta.get(META_FORMAT)? {
             Some(raw) => {
                 let found = String::from_utf8_lossy(&raw).into_owned();
@@ -157,7 +157,7 @@ impl Database {
         Ok(Some(sonic_rs::from_slice(&raw)?))
     }
 
-        pub fn insert_value(&self, setting_code: &str, key: &str, value: Value) -> Result<()> {
+    pub fn insert_value(&self, setting_code: &str, key: &str, value: Value) -> Result<()> {
         key::validate(setting_code, key)?;
         let raw_key = key::value_key(setting_code, key);
 
@@ -174,7 +174,20 @@ impl Database {
         Ok(())
     }
 
-        pub fn remove_value(&self, setting_code: &str, key: &str) -> Result<bool> {
+    pub fn put_value(&self, setting_code: &str, key: &str, value: Value) -> Result<()> {
+        key::validate(setting_code, key)?;
+        let raw_key = key::value_key(setting_code, key);
+
+        let _guard = self.shared.stripe(&raw_key).lock();
+
+        let bytes = sonic_rs::to_vec(&[value])?;
+        self.shared.values.insert(&raw_key, bytes)?;
+        self.touch_locked(&raw_key, Tier::Values)?;
+
+        Ok(())
+    }
+
+    pub fn remove_value(&self, setting_code: &str, key: &str) -> Result<bool> {
         key::validate(setting_code, key)?;
         let raw_key = key::value_key(setting_code, key);
 
@@ -188,11 +201,11 @@ impl Database {
         Ok(true)
     }
 
-        pub fn entries(&self) -> Result<Vec<DataEntry>> {
+    pub fn entries(&self) -> Result<Vec<DataEntry>> {
         Self::collect_entries(self.shared.values.iter())
     }
 
-        pub fn entries_by_setting_code(&self, setting_code: &str) -> Result<Vec<DataEntry>> {
+    pub fn entries_by_setting_code(&self, setting_code: &str) -> Result<Vec<DataEntry>> {
         key::validate(setting_code, "")?;
         Self::collect_entries(self.shared.values.prefix(key::value_prefix(setting_code)))
     }
@@ -215,7 +228,7 @@ impl Database {
         Ok(result)
     }
 
-            pub fn persist(&self, mode: PersistMode) -> Result<()> {
+    pub fn persist(&self, mode: PersistMode) -> Result<()> {
         self.shared.db.persist(mode)?;
         Ok(())
     }
@@ -230,7 +243,7 @@ pub(crate) mod tests {
         sonic_rs::from_str(s).unwrap()
     }
 
-            pub(crate) fn open(limit: usize) -> (tempfile::TempDir, Database) {
+    pub(crate) fn open(limit: usize) -> (tempfile::TempDir, Database) {
         let dir = tempfile::tempdir().expect("tempdir");
         let db = Database::open(
             dir.path(),
@@ -241,6 +254,26 @@ pub(crate) mod tests {
         )
         .expect("open database");
         (dir, db)
+    }
+
+    #[test]
+    fn put_value_replaces_whole_list() {
+        let (_dir, db) = open(3);
+        db.insert_value("sc", "k", val("1")).unwrap();
+        db.insert_value("sc", "k", val("2")).unwrap();
+        db.put_value("sc", "k", val("3")).unwrap();
+        let got = db.get_value("sc", "k").unwrap().expect("present");
+        assert_eq!(sonic_rs::to_string(&*got).unwrap(), "[3]");
+
+        db.insert_value("sc", "k", val("4")).unwrap();
+        let got = db.get_value("sc", "k").unwrap().expect("present");
+        assert_eq!(sonic_rs::to_string(&*got).unwrap(), "[4,3]");
+        assert!(
+            db.key_meta("sc", "k")
+                .unwrap()
+                .expect("в реестре")
+                .has_values
+        );
     }
 
     #[test]

@@ -100,4 +100,14 @@ impl Plugin for PluginModule {
         let ctx = self.shared.repo.context();
         self.shared.executor.run(pre, payload, ctx).await
     }
+
+    async fn run_plugin_discard(
+        &self,
+        plugin_name: &str,
+        payload: Vec<u8>,
+    ) -> Result<(), PluginError> {
+        let pre = self.shared.repo.get(plugin_name).await?;
+        let ctx = self.shared.repo.context();
+        self.shared.executor.run_discard(pre, payload, ctx).await
+    }
 }

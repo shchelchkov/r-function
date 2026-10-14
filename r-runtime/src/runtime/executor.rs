@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use r_config::config::WasmConfig;
 use r_error::runtime::error::RuntimeError;
 use tokio::task::AbortHandle;
 use wasmtime::{
@@ -12,15 +13,13 @@ use wasmtime_wasi::{
     p2::pipe::{MemoryInputPipe, MemoryOutputPipe},
 };
 
-const MEMORY_LIMIT_BYTES: usize = 64 * 1024 * 1024;
+const MIB: usize = 1024 * 1024;
 const TABLE_ELEMENTS_LIMIT: usize = 10_000;
 const INSTANCES_LIMIT: usize = 1;
 const MEMORIES_LIMIT: usize = 1;
 const TABLES_LIMIT: usize = 1;
-const STDOUT_BUF_BYTES: usize = 4 * 1024 * 1024;
 const STDERR_BUF_BYTES: usize = 64 * 1024;
 const EPOCH_TICK: Duration = Duration::from_millis(10);
-const EPOCH_DEADLINE_TICKS: u64 = 500;
 const MIN_CONCURRENT_INSTANCES: u32 = 4;
 
 pub struct StoreCtx {
@@ -31,17 +30,21 @@ pub struct StoreCtx {
 pub struct WasmExecutor {
     engine: Engine,
     epoch_abort: AbortHandle,
+    memory_bytes: usize,
+    stdout_bytes: usize,
+    deadline_ticks: u64,
 }
 
 impl WasmExecutor {
-    pub fn new(max_instances: u32) -> Result<Self, RuntimeError> {
+    pub fn new(max_instances: u32, limits: &WasmConfig) -> Result<Self, RuntimeError> {
         let max_instances = max_instances.max(MIN_CONCURRENT_INSTANCES);
+        let memory_bytes = limits.memory_mib * MIB;
         let mut pool = PoolingAllocationConfig::default();
         pool.total_memories(max_instances)
             .total_tables(max_instances)
             .total_core_instances(max_instances)
             .total_stacks(max_instances.saturating_mul(2))
-            .max_memory_size(MEMORY_LIMIT_BYTES)
+            .max_memory_size(memory_bytes)
             .table_elements(TABLE_ELEMENTS_LIMIT);
 
         let mut cfg = wasmtime::Config::new();
@@ -53,6 +56,12 @@ impl WasmExecutor {
         Ok(Self {
             engine,
             epoch_abort,
+            memory_bytes,
+            stdout_bytes: limits.stdout_mib * MIB,
+            deadline_ticks: limits
+                .timeout_ms
+                .div_ceil(EPOCH_TICK.as_millis() as u64)
+                .max(1),
         })
     }
 
@@ -66,7 +75,7 @@ impl WasmExecutor {
         pre: &InstancePre<StoreCtx>,
         payload: Vec<u8>,
     ) -> Result<Vec<u8>, RuntimeError> {
-        let stdout = MemoryOutputPipe::new(STDOUT_BUF_BYTES);
+        let stdout = MemoryOutputPipe::new(self.stdout_bytes);
         let stderr = MemoryOutputPipe::new(STDERR_BUF_BYTES);
         let wasi = WasiCtxBuilder::new()
             .stdin(MemoryInputPipe::new(payload))
@@ -75,7 +84,7 @@ impl WasmExecutor {
             .build_p1();
 
         let limits = StoreLimitsBuilder::new()
-            .memory_size(MEMORY_LIMIT_BYTES)
+            .memory_size(self.memory_bytes)
             .table_elements(TABLE_ELEMENTS_LIMIT)
             .instances(INSTANCES_LIMIT)
             .memories(MEMORIES_LIMIT)
@@ -83,7 +92,7 @@ impl WasmExecutor {
             .build();
 
         let mut store = Store::new(&self.engine, StoreCtx { wasi, limits });
-        store.set_epoch_deadline(EPOCH_DEADLINE_TICKS);
+        store.set_epoch_deadline(self.deadline_ticks);
         store.limiter(|c: &mut StoreCtx| &mut c.limits);
 
         let inst = pre

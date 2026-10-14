@@ -46,12 +46,22 @@ pub async fn run(cfg: AppConfig) -> Result<(), Box<dyn Error>> {
         .map(|wd| Watchdog::new(wd, runtime.clone()).spawn(shutdown.subscribe()));
 
     let pipeline = Pipeline::spawn(&cfg.pipeline, processor);
+    let state = cfg.values.persist_state.then(|| values.clone());
 
     let db_flusher = persist::spawn_flusher(
         db.clone(),
         Duration::from_millis(cfg.values.fsync_ms.max(1)),
         shutdown.subscribe(),
     );
+    let snapshotter = match &state {
+        Some(values) if cfg.values.snapshot_secs > 0 => Some(persist::spawn_snapshotter(
+            values.clone(),
+            db.clone(),
+            Duration::from_secs(cfg.values.snapshot_secs),
+            shutdown.subscribe(),
+        )),
+        _ => None,
+    };
 
     let consumer_task = tokio::spawn({
         let ingress = pipeline.ingress();
@@ -89,6 +99,12 @@ pub async fn run(cfg: AppConfig) -> Result<(), Box<dyn Error>> {
     }
     pipeline.drain().await;
     let _ = db_flusher.await;
+    if let Some(task) = snapshotter {
+        let _ = task.await;
+    }
+    if let Some(values) = &state {
+        persist::snapshot_values(values, &db).await;
+    }
     persist::persist_all(&db).await;
     let _ = refresher.await;
     if let Some(task) = watchdog_task {

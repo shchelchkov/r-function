@@ -13,17 +13,19 @@ pub struct AppConfig {
     #[serde(default)]
     pub pipeline: PipelineConfig,
     #[serde(default)]
+    pub wasm: WasmConfig,
+    #[serde(default)]
     pub watchdog: Option<WatchdogConfig>,
-        #[serde(default)]
+    #[serde(default)]
     pub http_auth: HashMap<String, HttpAuthConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HttpAuthConfig {
     pub kind: HttpAuthKind,
-        pub base_url: String,
+    pub base_url: String,
     pub api_key_env: String,
-        #[serde(default)]
+    #[serde(default)]
     pub api_secret_env: Option<String>,
     #[serde(default = "default_recv_window")]
     pub recv_window: u64,
@@ -32,8 +34,8 @@ pub struct HttpAuthConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum HttpAuthKind {
-        BybitV5,
-        Bearer,
+    BybitV5,
+    Bearer,
 }
 
 fn default_recv_window() -> u64 {
@@ -115,8 +117,22 @@ pub struct ValuesConfig {
     pub limit: usize,
     #[serde(default = "default_history")]
     pub history: usize,
-            #[serde(default = "default_fsync_ms")]
+    #[serde(default = "default_fsync_ms")]
     pub fsync_ms: u64,
+    #[serde(default)]
+    pub persist_state: bool,
+    #[serde(default = "default_snapshot_secs")]
+    pub snapshot_secs: u64,
+    #[serde(default)]
+    pub restore_service: Option<RestoreServiceConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RestoreServiceConfig {
+    pub url: String,
+    pub setting_codes: Vec<String>,
+    #[serde(default = "default_restore_timeout_ms")]
+    pub timeout_ms: u64,
 }
 
 fn default_function_prefix() -> String {
@@ -141,6 +157,14 @@ fn default_history() -> usize {
 
 fn default_fsync_ms() -> u64 {
     1000
+}
+
+fn default_snapshot_secs() -> u64 {
+    900
+}
+
+fn default_restore_timeout_ms() -> u64 {
+    20_000
 }
 
 fn default_directory_prefix() -> String {
@@ -187,6 +211,36 @@ impl Default for PipelineConfig {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct WasmConfig {
+    #[serde(default = "default_wasm_memory_mib")]
+    pub memory_mib: usize,
+    #[serde(default = "default_wasm_stdout_mib")]
+    pub stdout_mib: usize,
+    #[serde(default = "default_wasm_timeout_ms")]
+    pub timeout_ms: u64,
+}
+
+fn default_wasm_memory_mib() -> usize {
+    64
+}
+fn default_wasm_stdout_mib() -> usize {
+    4
+}
+fn default_wasm_timeout_ms() -> u64 {
+    5_000
+}
+
+impl Default for WasmConfig {
+    fn default() -> Self {
+        Self {
+            memory_mib: default_wasm_memory_mib(),
+            stdout_mib: default_wasm_stdout_mib(),
+            timeout_ms: default_wasm_timeout_ms(),
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
     #[error("io: {0}")]
@@ -200,5 +254,67 @@ impl AppConfig {
         let text = std::fs::read_to_string(path)?;
         let cfg = serde_yaml_ng::from_str(&text)?;
         Ok(cfg)
+    }
+}
+
+#[cfg(test)]
+mod values_config_tests {
+    use super::ValuesConfig;
+
+    #[test]
+    fn persist_state_is_off_by_default() {
+        let cfg: ValuesConfig = serde_yaml_ng::from_str("path: /data/values/replay").unwrap();
+        assert!(!cfg.persist_state);
+    }
+
+    #[test]
+    fn persist_state_reads_from_yaml() {
+        let cfg: ValuesConfig =
+            serde_yaml_ng::from_str("path: /data/values/orderbook\npersist_state: true").unwrap();
+        assert!(cfg.persist_state);
+        assert_eq!(cfg.path, "/data/values/orderbook");
+    }
+
+    #[test]
+    fn snapshot_every_15_min_by_default() {
+        let cfg: ValuesConfig = serde_yaml_ng::from_str("persist_state: true").unwrap();
+        assert_eq!(cfg.snapshot_secs, 900);
+        let cfg: ValuesConfig =
+            serde_yaml_ng::from_str("persist_state: true\nsnapshot_secs: 0").unwrap();
+        assert_eq!(cfg.snapshot_secs, 0, "0 — только при остановке");
+    }
+
+    #[test]
+    fn restore_service_is_optional() {
+        let cfg: ValuesConfig = serde_yaml_ng::from_str("persist_state: true").unwrap();
+        assert!(cfg.restore_service.is_none());
+
+        let yaml = "persist_state: true\nrestore_service:\n  url: http://ts-state:8230/state\n  setting_codes: [movement_zone, movement_zone_window]\n";
+        let rs = serde_yaml_ng::from_str::<ValuesConfig>(yaml)
+            .unwrap()
+            .restore_service
+            .expect("задан");
+        assert_eq!(rs.url, "http://ts-state:8230/state");
+        assert_eq!(rs.setting_codes, ["movement_zone", "movement_zone_window"]);
+        assert_eq!(rs.timeout_ms, 20_000);
+    }
+}
+
+#[cfg(test)]
+mod wasm_config_tests {
+    use super::WasmConfig;
+
+    #[test]
+    fn limits_default_to_64_mib_4_mib_5_s() {
+        let cfg: WasmConfig = serde_yaml_ng::from_str("{}").unwrap();
+        assert_eq!(
+            (cfg.memory_mib, cfg.stdout_mib, cfg.timeout_ms),
+            (64, 4, 5_000)
+        );
+        let cfg: WasmConfig = serde_yaml_ng::from_str("memory_mib: 512").unwrap();
+        assert_eq!(
+            (cfg.memory_mib, cfg.stdout_mib, cfg.timeout_ms),
+            (512, 4, 5_000)
+        );
     }
 }

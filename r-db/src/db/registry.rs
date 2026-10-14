@@ -8,7 +8,7 @@ use crate::db::key;
 pub struct KeyMeta {
     pub has_values: bool,
     pub has_history: bool,
-            pub updated_at: u64,
+    pub updated_at: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -38,7 +38,7 @@ impl KeyMeta {
 }
 
 impl Database {
-                pub(crate) fn touch_locked(&self, raw_key: &[u8], tier: Tier) -> Result<()> {
+    pub(crate) fn touch_locked(&self, raw_key: &[u8], tier: Tier) -> Result<()> {
         let mut meta = self.key_meta_raw(raw_key)?.unwrap_or_default();
         meta.set(tier, true);
         meta.updated_at = now_ms();
@@ -48,7 +48,7 @@ impl Database {
         Ok(())
     }
 
-        pub(crate) fn untouch_locked(&self, raw_key: &[u8], tier: Tier) -> Result<()> {
+    pub(crate) fn untouch_locked(&self, raw_key: &[u8], tier: Tier) -> Result<()> {
         let Some(mut meta) = self.key_meta_raw(raw_key)? else {
             return Ok(());
         };
@@ -75,11 +75,11 @@ impl Database {
         self.key_meta_raw(&key::value_key(setting_code, key))
     }
 
-        pub fn registry(&self) -> Result<Vec<KeyEntry>> {
+    pub fn registry(&self) -> Result<Vec<KeyEntry>> {
         Self::collect_keys(self.shared.registry.iter())
     }
 
-            pub fn keys(&self, setting_code: &str) -> Result<Vec<KeyEntry>> {
+    pub fn keys(&self, setting_code: &str) -> Result<Vec<KeyEntry>> {
         key::validate(setting_code, "")?;
         Self::collect_keys(self.shared.registry.prefix(key::value_prefix(setting_code)))
     }

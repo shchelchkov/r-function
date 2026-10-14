@@ -34,6 +34,22 @@ impl PluginExecutor {
 
         Ok(output)
     }
+
+    pub async fn run_discard(
+        &self,
+        plugin: Arc<Plugin>,
+        payload: Vec<u8>,
+        ctx: Arc<PluginContext>,
+    ) -> Result<(), PluginError> {
+        let api = create_api(&ctx);
+
+        tokio::task::spawn_blocking(move || unsafe {
+            let result = plugin.process_discard(&api, &payload);
+            plugin.free_buffer(result);
+        })
+        .await
+        .map_err(|e| PluginError::Trap(format!("plugin execution failed: {e}")))
+    }
 }
 
 fn buffer_to_vec(result: Buffer) -> Vec<u8> {

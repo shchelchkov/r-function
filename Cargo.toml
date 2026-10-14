@@ -13,6 +13,7 @@ members = [
     "r-router",
     "r-feed",
     "r-setting",
+    "r-state-service",
     "r-value",
     "r-tree",
     "r-db",
@@ -54,6 +55,7 @@ r-value = { version = "0.1.0", path = "r-value" }
 r-db = { version = "0.1.0", path = "r-db" }
 r-tree = { version = "0.1.0", path = "r-tree" }
 r-watchdog = { version = "0.1.0", path = "r-watchdog" }
+r-state-service = { version = "0.1.0", path = "r-state-service" }
 r-setting = { version = "0.1.0", path = "r-setting" }
 value-rs = { workspace = true }
 
@@ -73,3 +75,10 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 sonic-rs = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = true
+codegen-units = 1

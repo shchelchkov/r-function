@@ -37,7 +37,7 @@ impl Function {
         self.shared.settings.clone()
     }
 
-            pub fn get_function_setting(&self, setting_code: &str) -> Option<Arc<Vec<FunctionSetting>>> {
+    pub fn get_function_setting(&self, setting_code: &str) -> Option<Arc<Vec<FunctionSetting>>> {
         let settings = &self.shared.settings;
         settings
             .get_or_load(setting_code, fetch_setting)
@@ -54,7 +54,7 @@ impl Function {
             })
     }
 
-            pub fn get_cached_setting(&self, setting_code: &str) -> Option<Arc<Vec<FunctionSetting>>> {
+    pub fn get_cached_setting(&self, setting_code: &str) -> Option<Arc<Vec<FunctionSetting>>> {
         self.shared.settings.get_or_default(setting_code)
     }
 
@@ -134,7 +134,7 @@ mod tests {
         }
     }
 
-        fn repo_with(files: &[(&str, &str)]) -> (tempfile::TempDir, Arc<GitHandle>) {
+    fn repo_with(files: &[(&str, &str)]) -> (tempfile::TempDir, Arc<GitHandle>) {
         let dir = tempfile::tempdir().unwrap();
         let repo = gix::init(dir.path()).unwrap();
 
